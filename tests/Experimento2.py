@@ -1,3 +1,7 @@
+import sys
+import os
+# Añadir el directorio raíz del proyecto al sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
 import scipy as sp
@@ -5,9 +9,9 @@ import matplotlib.pyplot as plt
 from scipy import linalg
 from itertools import product
 import time
-from finite_elements import Quad4, Bar2D
-from fea_system import Structure
-from gauss_quad import Gauss_Legendre
+from pyfem.finite_elements import Quad4, Bar2D
+from pyfem.fea_system import Structure
+from pyfem.gauss_quad import Gauss_Legendre
 
 #***********************************
 #EJEMPLO DE ENSAMBLAJE DE MATRICES

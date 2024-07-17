@@ -4,8 +4,8 @@ import scipy as sp
 from scipy import linalg
 from scipy.sparse import coo_matrix
 from itertools import product
-from finite_elements import Quad4, Bar2D
-from elem_constructors import get_elem_constructor
+from .finite_elements import Quad4, Bar2D
+from .elem_constructors import get_elem_constructor
 
 
 elem_type = {0: Bar2D,

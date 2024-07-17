@@ -2,7 +2,7 @@
 import numpy as np
 import scipy as sp
 from scipy import linalg
-from gauss_quad import Gauss_Legendre
+from .gauss_quad import Gauss_Legendre
 
 
 def elast_mat_2d(mater):

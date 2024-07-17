@@ -1,6 +1,6 @@
 
 import numpy as np
-from finite_elements import Quad4, Bar2D, Bar1D
+from .finite_elements import Quad4, Bar2D, Bar1D
 
 def construct_bar1d(data, coordinates, materials):
     # ********** data ***********
