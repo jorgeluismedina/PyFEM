@@ -59,7 +59,6 @@ plt.plot(cum_disp[:,2], cum_load[:,-1],'o-', label="node 3")
 plt.xlabel("displacements")
 plt.ylabel("load")
 plt.legend()
-plt.title('Fig 1')
 
 
 #3. RESOLUCION CON EL METODO DE RESOLUCION TANGENCIAL

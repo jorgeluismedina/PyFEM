@@ -1,3 +1,6 @@
 # Ignorar directorios de caché de Python
 **/__pycache__
 *.pyc
+
+#Jupyter Notebooks
+*.ipynb
