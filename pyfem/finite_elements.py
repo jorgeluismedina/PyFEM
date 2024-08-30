@@ -5,7 +5,7 @@ from scipy import linalg
 from .gauss_quad import Gauss_Legendre
 
 
-def elast_mat_2d(mater):
+def const_mat_2d(mater):
     E, nu, _ = mater #Elasticity modulus, poisson modulus
     enu = E / (1-nu**2)
     mnu = (1-nu)/2
@@ -37,7 +37,7 @@ class Quad4(FElement):
         self.set_dof(2)
         self.quad_scheme = Gauss_Legendre(2, ndim=2)
         self.thick = self.param
-        self.elast = elast_mat_2d(self.mater)
+        self.const = const_mat_2d(self.mater)
         self.get_stiff_mat()
         self.cracked = False
         
@@ -50,12 +50,12 @@ class Quad4(FElement):
                             [r - 1, -r + 1, r + 1, -r - 1]]) #[r - 1, -r - 1, r + 1, -r + 1]
         return N, dN
     
-    def get_diffs_mat(self, r, s):
+    def get_shape_strain_mats(self, r, s):
         N, dNdn = self.shape_funcs(r, s)
         J = dNdn @ self.coord
         dNdc = sp.linalg.inv(J) @ dNdn
-        H = np.zeros((2, 2*N.shape[0]))
-        B = np.zeros((3, 2*N.shape[0]))
+        H = np.zeros((2,8)) #(2, 2*N.shape[0])
+        B = np.zeros((3,8))
         H[0, 0::2] = N
         H[1, 1::2] = N
         B[0, 0::2] = dNdc[0, :]
@@ -63,51 +63,38 @@ class Quad4(FElement):
         B[2, 0::2] = dNdc[1, :]
         B[2, 1::2] = dNdc[0, :]
         return H, B, linalg.det(J)
-    
-    #En caso de que se necesite optimizar
-    def get_strain_mat(self, r, s):
-        _, dNdn = self.shape_funcs(r, s)
-        J = dNdn @ self.coord
-        dNdc = sp.linalg.inv(J) @ dNdn
-        B = np.zeros((3, 8))
-        B[0, 0::2] = dNdc[0, :]
-        B[1, 1::2] = dNdc[1, :]
-        B[2, 0::2] = dNdc[1, :]
-        B[2, 1::2] = dNdc[0, :]
-        return B
 
     def get_stiff_mat(self):
         points = self.quad_scheme.points
         weights = self.quad_scheme.weights
+        npoin = points.shape[0]
         t, dens = self.thick, self.mater[-1]
-        D = self.elast
-        b = np.array([0, dens])
-        k_vals = np.zeros((len(points),8,8))
-        m_vals = np.zeros((len(points),8,8))
-        f_vals = np.zeros((len(points),8))
+        D = self.const
+        b = np.array([0, -dens])
+        B_vals = np.zeros((npoin,3,8))
+        K_vals = np.zeros((npoin,8,8))
+        f_vals = np.zeros((npoin,8))
+
         for i, point in enumerate(points):
-            H, B, detJ = self.get_diffs_mat(*point)
-            k_vals[i] = t*(B.T @ D @ B)*detJ
-            m_vals[i] = dens*(H.T @ H)*detJ
-            f_vals[i] = t*(b @ H)*detJ
+            H, B, detJ = self.get_shape_strain_mats(*point)
+            K_vals[i] = (B.T @ D @ B) * t*detJ
+            f_vals[i] = (b @ H) * t*detJ
+            B_vals[i] = B
+        
+        self.strain = B_vals
+        self.stiff = np.sum(K_vals * weights[:,None,None], axis=0) #stiffnes matrix
+        self.eload = np.sum(f_vals * weights[:,None], axis=0) #gravity force (self weight)
             
-        self.stiff = np.sum(k_vals * weights[:, None, None], axis=0)
-        self.mass = np.sum(m_vals * weights[:, None, None], axis=0)
-        self.self_weight = np.sum(f_vals * weights[:, None], axis=0)
-    
     def get_stress(self, u):
-        points = self.integration_scheme.points
-        D = self.elast
-        self.stress = np.zeros((3,4))
-        gauss_stress = np.zeros((3,4))
-        extrapol = np.zeros((4,4)) #extrapolation
-        order = [0,3,1,2]
-        for i, point in enumerate(points):
-            new_point = 1/point
-            B = self.get_strain_mat(*point)
-            gauss_stress[:, order[i]] = D @ B @ u
-            extrapol[:, order[i]] = self.shape_funcs(*new_point)[0]
-            self.stress += gauss_stress @ extrapol
+        #self.stress = np.zeros((4*3))
+        points_ = 1/self.quad_scheme.points
+        N_ = self.shape_funcs(*points_.T)[0].T #4x4
+        D = self.const
+        B = self.strain
+        order = [0,2,3,1]
+        gauss_stress = D @ B @ u #4x3
+        nodes_stress = N_[order] @ gauss_stress[order] #4x3
+        return gauss_stress, nodes_stress
 
 
 
@@ -136,15 +123,6 @@ class Bar2D(FElement):
                              [-1,  1]])
         R = self.rotation_matrix()
         self.stiff = R.T @ K @ R
-    
-    def get_mass_mat(self):
-        dens = self.mater[-1]
-        m = self.xarea * self.length * dens
-        self.mass = m/6 * np.array([[2, 0, 1, 0],
-                                    [0, 2, 0, 1],
-                                    [1, 0, 2, 0],
-                                    [0, 1, 0, 2]])
-        self.self_weight = np.array([0, m/2, 0, m/2])
 
     def get_stress(self, u):
         E_L = self.elast / self.length
