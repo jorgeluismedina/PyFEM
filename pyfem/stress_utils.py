@@ -44,7 +44,6 @@ class YieldCriterion(ABC):
 
     def set_stress(self, stress):
         # Convertir [sx, sy, tyx] a [sx, sy, tyx, sz]
-        #self.strss = np.hstack((stress, 0)) # Plane Stress
         self.strss = stress
         self.calc_invariants()
 
@@ -77,6 +76,22 @@ class YieldCriterion(ABC):
         cons1, cons2, cons3 = self.get_constants()
         avect = cons1*veca1 + cons2*veca2 + cons3*veca3
         return avect
+    
+    def get_flowpl(self, elast, poiss, ntype):
+        avect = self.get_avector()
+        fmul1 = elast/(1+poiss)
+        if ntype==1:#tension plana
+            avect_sum = avect[0]+avect[1]
+            fmult = elast*poiss*(avect_sum)/(1-poiss**2)
+        else:#def plana y axisimetrico
+            avect_sum = avect[0]+avect[1]+avect[3]
+            fmult = elast*poiss*(avect_sum)/((1+poiss)*(1-2*poiss))
+
+        dvect = np.array([fmul1*avect[0] + fmult, 
+                          fmul1*avect[1] + fmult,
+                          0.5*avect[2]*fmul1,
+                          fmul1*avect[3] + fmult])
+        return dvect
         
     @abstractmethod
     def eval_stress(self):
