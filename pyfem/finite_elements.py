@@ -3,10 +3,10 @@ import numpy as np
 import scipy as sp
 from scipy import linalg
 from .gauss_quad import Gauss_Legendre
+from .shape_funcs import Node4Shape
 
 
-def const_mat_2d(mater):
-    E, nu, _ = mater #Elasticity modulus, poisson modulus
+def const_mat_2d(E, nu):
     enu = E / (1-nu**2)
     mnu = (1-nu)/2
     D = enu*np.array([[1, nu, 0],
@@ -22,8 +22,9 @@ class FElement():
         self.mater = mater
         self.param = param
         self.nnods = nodes.shape[0]
+        self.eload = None
         self.dof = None
-
+        
     def set_dof(self, ndofn: int) -> None:
         self.ndofn = ndofn
         node_dof = np.arange(ndofn, dtype=int)
@@ -32,68 +33,57 @@ class FElement():
     
 
 class Quad4(FElement):
-    def __init__(self, nodes, coords, params, mater):
-        super().__init__(nodes, coords, params, mater)
+    def __init__(self, nodes, coord, param, mater):
+        super().__init__(nodes, coord, param, mater)
         self.set_dof(2)
-        self.quad_scheme = Gauss_Legendre(2, ndim=2)
         self.thick = self.param
-        self.const = const_mat_2d(self.mater)
-        self.get_stiff_mat()
+        self.shape = Node4Shape(ndofn=2)
+        self.dmatx = const_mat_2d(self.mater[0], self.mater[1])
+        self.quad_scheme = Gauss_Legendre(2, ndim=2)
+        self.set_stiff_mat()
         self.cracked = False
-        
-    def shape_funcs(self, r, s):
-        N = 0.25*np.array([(1 - r)*(1 - s),
-                           (1 - r)*(1 + s), #(1 + r)*(1 - s)
-                           (1 + r)*(1 + s), #
-                           (1 + r)*(1 - s)]) #(1 - r)*(1 + s)
-        dN = 0.25*np.array([[s - 1, -s - 1, s + 1, -s + 1], #[s - 1, -s + 1, s + 1, -s - 1]
-                            [r - 1, -r + 1, r + 1, -r - 1]]) #[r - 1, -r - 1, r + 1, -r + 1]
-        return N, dN
     
-    def get_shape_strain_mats(self, r, s):
-        N, dNdn = self.shape_funcs(r, s)
-        J = dNdn @ self.coord
-        dNdc = sp.linalg.inv(J) @ dNdn
-        H = np.zeros((2,8)) #(2, 2*N.shape[0])
+    def get_strain_mat(self, r, s):
+        deriv = self.shape.deriv(r,s)
+        jacob = deriv @ self.coord
+        cartd = sp.linalg.inv(jacob) @ deriv
         B = np.zeros((3,8))
-        H[0, 0::2] = N
-        H[1, 1::2] = N
-        B[0, 0::2] = dNdc[0, :]
-        B[1, 1::2] = dNdc[1, :]
-        B[2, 0::2] = dNdc[1, :]
-        B[2, 1::2] = dNdc[0, :]
-        return H, B, linalg.det(J)
+        B[0, 0::2] = cartd[0, :]
+        B[1, 1::2] = cartd[1, :]
+        B[2, 0::2] = cartd[1, :]
+        B[2, 1::2] = cartd[0, :]
+        return B, linalg.det(jacob)
 
-    def get_stiff_mat(self):
-        points = self.quad_scheme.points
-        weights = self.quad_scheme.weights
-        npoin = points.shape[0]
-        t, dens = self.thick, self.mater[-1]
-        D = self.const
-        b = np.array([0, -dens])
-        B_vals = np.zeros((npoin,3,8))
-        K_vals = np.zeros((npoin,8,8))
-        f_vals = np.zeros((npoin,8))
+    def set_stiff_mat(self):
+        npoin = self.quad_scheme.points.shape[0]
+        bforc = np.array([0, -self.mater[-1]])
+        bmatx = np.zeros((npoin,3,8))
+        nmatx = np.zeros((npoin,2,8))
+        det_J = np.zeros(npoin)
 
-        for i, point in enumerate(points):
-            H, B, detJ = self.get_shape_strain_mats(*point)
-            K_vals[i] = (B.T @ D @ B) * t*detJ
-            f_vals[i] = (b @ H) * t*detJ
-            B_vals[i] = B
-        
-        self.strain = B_vals
-        self.stiff = np.sum(K_vals * weights[:,None,None], axis=0) #stiffnes matrix
-        self.eload = np.sum(f_vals * weights[:,None], axis=0) #gravity force (self weight)
+        for i, point in enumerate(self.quad_scheme.points):
+            nmatx[i] = self.shape.matrix(*point)
+            bmatx[i], det_J[i] = self.get_strain_mat(*point)
+
+        bmatx_T = np.transpose(bmatx,(0,2,1))
+        dvolu = self.thick * det_J * self.quad_scheme.weights
+        self.stiff = np.sum(bmatx_T @ self.dmatx @ bmatx * dvolu[:,None,None], axis=0)
+        self.eload = np.sum(bforc @ nmatx * dvolu[:,None], axis=0)
+        self.bmatx = bmatx
+        self.dvolu = dvolu
+
+    def update_stiff_mat(self):
+        bmatx_T = np.transpose(self.bmatx,(0,2,1))
+        dvolu = self.dvolu[:,None,None]
+        self.stiff = np.sum(bmatx_T @ self.dmatx @ self.bmatx * dvolu, axis=0)
             
     def get_stress(self, u):
         #self.stress = np.zeros((4*3))
-        points_ = 1/self.quad_scheme.points
-        N_ = self.shape_funcs(*points_.T)[0].T #4x4
-        D = self.const
-        B = self.strain
+        poins = 1/self.quad_scheme.points
+        gvals = self.shape.funcs(*poins.T).T #4x4
         order = [0,2,3,1]
-        gauss_stress = D @ B @ u #4x3
-        nodes_stress = N_[order] @ gauss_stress[order] #4x3
+        gauss_stress = self.dmatx @ self.bmatx @ u #4x3
+        nodes_stress = gvals[order] @ gauss_stress[order] #4x3
         return gauss_stress, nodes_stress
 
 
