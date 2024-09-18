@@ -10,9 +10,9 @@ def construct_bar1d(data, coordinates, materials):
     nodes = data[:,:-3].astype(int)
     idmat = data[:,-2].astype(int)
     new_coords = coordinates[nodes]
-    elem_mater = materials[idmat]
+    #elem_mater = materials[idmat]
     elements = [Bar1D(nodes[i], new_coords[i], 
-                      areas[i], elem_mater[i]) for i in range(nelem)]
+                      areas[i], materials[idmat[i]]) for i in range(nelem)]
     return elements
 
 
@@ -23,10 +23,10 @@ def construct_bar2d(data, coordinates, materials):
     areas = data[:,-3]
     nodes = data[:,:-3].astype(int)
     idmat = data[:,-2].astype(int)
-    new_coords = coordinates[nodes]
-    elem_mater = materials[idmat]
-    elements = [Bar2D(nodes[i], new_coords[i], 
-                      areas[i], elem_mater[i]) for i in range(nelem)]
+    coord = coordinates[nodes]
+    #elem_mater = materials[idmat]
+    elements = [Bar2D(nodes[i], coord[i], 
+                      areas[i], materials[idmat[i]]) for i in range(nelem)]
     return elements
  
 def construct_quad4(data, coordinates, materials):

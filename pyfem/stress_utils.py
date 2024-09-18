@@ -39,13 +39,10 @@ def principal_stresses_mohr(normal_stresses):
 
 
 class YieldCriterion(ABC):
-    def __init__(self):
+    def __init__(self, material):
         self.root3 = np.sqrt(3)
-
-    def set_stress(self, stress):
-        # Convertir [sx, sy, tyx] a [sx, sy, tyx, sz]
-        self.strss = stress
-        self.calc_invariants()
+        self.mater = material
+        self.uniax = self.mater.uniax if hasattr(self.mater, 'uniax') else None
 
     def get_theta(self):
         J3 = self.devia[3]*(self.devia[3]**2-self.J2)
@@ -56,18 +53,17 @@ class YieldCriterion(ABC):
             sin3t = -1 if value < -1 else 1 if value > 1 else value
         return np.arcsin(sin3t)/3
          
-    def calc_invariants(self):
+    def calc_invariants(self, stress): #esta funcion necesita ser ejecutada antes hacer todo
         trace = np.array([True, True, False, True])
-        self.smean = np.sum(self.strss[trace])/3 #I3/3
-        self.devia = self.strss - self.smean*trace
+        self.smean = np.sum(stress[trace])/3 #I3/3
+        self.devia = stress - self.smean*trace
         self.J2 = self.devia[2]**2 + 0.5*np.sum(self.devia[trace]**2)
         self.steff = np.sqrt(self.J2)
-        self.root3 = np.sqrt(3)
         self.theta = self.get_theta()
     
-    def get_avector(self):
+    def get_flow_vector(self):
         veca1 = np.array([1,1,0,1])
-        veca2 = self.devia*np.array([1,1,2,1])/self.steff
+        veca2 = self.devia*np.array([1,1,2,1])/(2*self.steff)
         veca3 = np.array([self.devia[1]*self.devia[3] + self.J2/3,
                           self.devia[0]*self.devia[3] + self.J2/3,
                           -2*self.devia[2]*self.devia[3],
@@ -76,25 +72,16 @@ class YieldCriterion(ABC):
         cons1, cons2, cons3 = self.get_constants()
         avect = cons1*veca1 + cons2*veca2 + cons3*veca3
         return avect
-    
-    def get_flowpl(self, elast, poiss, ntype):
-        avect = self.get_avector()
-        fmul1 = elast/(1+poiss)
-        if ntype==1:#tension plana
-            avect_sum = avect[0]+avect[1]
-            fmult = elast*poiss*(avect_sum)/(1-poiss**2)
-        else:#def plana y axisimetrico
-            avect_sum = avect[0]+avect[1]+avect[3]
-            fmult = elast*poiss*(avect_sum)/((1+poiss)*(1-2*poiss))
 
-        dvect = np.array([fmul1*avect[0] + fmult, 
-                          fmul1*avect[1] + fmult,
-                          0.5*avect[2]*fmul1,
-                          fmul1*avect[3] + fmult])
-        return dvect
+    def enter_stress(self, stress): #[sx, sy, tyx, sz]
+        self.calc_invariants(stress)
+
+    def check_yield(self):
+        steff = self.stress_level()
+        return steff > self.uniax
         
     @abstractmethod
-    def eval_stress(self):
+    def stress_level(self): #(effective stress)
         pass
 
     @abstractmethod
@@ -104,7 +91,7 @@ class YieldCriterion(ABC):
 
 
 class Tresca(YieldCriterion):
-    def eval_stress(self):
+    def stress_level(self):
         costh = np.cos(self.theta)
         return 2*costh*self.steff
     
@@ -125,7 +112,7 @@ class Tresca(YieldCriterion):
 
     
 class VonMises(YieldCriterion):
-    def eval_stress(self):
+    def stress_level(self):
         return self.root3*self.steff
     
     def get_constants(self):
@@ -135,12 +122,13 @@ class VonMises(YieldCriterion):
         return cons1, cons2, cons3
 
 class MohrCoulomb(YieldCriterion):
-    def __init__(self, phi):
-        super().__init__()
-        self.phira = phi*np.pi/180 #en rad
+    def __init__(self, material):
+        super().__init__(material)
+        self.phira = self.mater.frict * np.pi/180 #en rad
         self.snphi = np.sin(self.phira)
+        self.uniax = self.mater.cohes * np.cos(self.phira)
 
-    def eval_stress(self):
+    def stress_level(self):
         costh = np.cos(self.theta)
         sinth = np.sin(self.theta)
         expr1 = costh - sinth*self.snphi/self.root3  
@@ -167,12 +155,13 @@ class MohrCoulomb(YieldCriterion):
         return cons1, cons2, cons3
 
 class DruckerPrager(YieldCriterion):
-    def __init__(self, phi):
-        super().__init__()
-        self.phira = phi*np.pi/180 #en rad
+    def __init__(self, material):
+        super().__init__(material)
+        self.phira = self.mater.frict * np.pi/180 #en rad
         self.snphi = np.sin(self.phira)
-
-    def eval_stress(self):
+        self.uniax = (6*self.mater.cohes*np.cos(self.phira)) / (self.root3*(3-self.snphi))   
+    
+    def stress_level(self):
         expr1 = 6*self.smean*self.snphi/(self.root3*(3-self.snphi))
         return expr1 + self.steff
     
@@ -181,3 +170,13 @@ class DruckerPrager(YieldCriterion):
         cons2 = 1
         cons3 = 0
         return cons1, cons2, cons3
+
+
+
+def get_yield_criterion(criterion):
+    yield_criteria = {'Tresca': Tresca, 
+                      'VonMises': VonMises,
+                      'MohrCoulomb': MohrCoulomb,
+                      'DruckerPrager': DruckerPrager}
+    
+    return yield_criteria.get(criterion)

@@ -8,8 +8,6 @@ from .finite_elements import Quad4, Bar2D
 from .elem_constructors import get_elem_constructor
 
 
-elem_type = {0: Bar2D,
-             1: Quad4}
 
 '''
 GLOSARIO DE VARIABLES
@@ -106,10 +104,14 @@ class Structure():
         gl_disps[self.fr_dof] = re_disps
         for elem in self.elems:
             edisp = gl_disps[elem.dof]
-            elem.get_stress(edisp)
+            dstrs = elem.calc_stress(edisp)
+            elem.update_elem(dstrs)
             gl_stiff[np.ix_(elem.dof, elem.dof)] += elem.stiff  
         re_stiff = gl_stiff[np.ix_(self.fr_dof, self.fr_dof)]
         return re_stiff
+
+    def residual_forces(self, re_stiff, re_disps, re_loads):
+        return re_stiff @ re_disps + re_loads
 
     #Devuelve los desplazamientos de los dofs libres
     def direct_solve(self, re_stiff, re_loads):

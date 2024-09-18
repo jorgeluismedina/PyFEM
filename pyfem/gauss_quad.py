@@ -111,6 +111,7 @@ class Gauss_Legendre(): #primero simetrico
         nd_wts = np.prod(np.array(list(product(wts, repeat=ndim))), axis=1)
         self.points = nd_pts
         self.weights = nd_wts
+        self.npoin = self.points.shape[0]
     
     """
     Compute an integral of a function over a hypercube using Gaussian quadrature of order n.
