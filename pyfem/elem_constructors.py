@@ -1,6 +1,9 @@
 
 import numpy as np
-from .finite_elements import Quad4, Bar2D, Bar1D
+#from .finite_elements import Quad4, Bar2D, Bar1D
+from .elements.bars import Bar1D, Bar2D
+from .elements.membranes import Quad4
+#from .elements.bar_elements.bar1d import Bar1D
 
 def construct_bar1d(data, coordinates, materials):
     # ********** data ***********
@@ -9,10 +12,9 @@ def construct_bar1d(data, coordinates, materials):
     areas = data[:,-3]
     nodes = data[:,:-3].astype(int)
     idmat = data[:,-2].astype(int)
-    new_coords = coordinates[nodes]
-    #elem_mater = materials[idmat]
-    elements = [Bar1D(nodes[i], new_coords[i], 
-                      areas[i], materials[idmat[i]]) for i in range(nelem)]
+    coord = coordinates[nodes]
+    elements = [Bar1D(nodes[i], coord[i], areas[i], 
+                      materials[idmat[i]]) for i in range(nelem)]
     return elements
 
 
@@ -24,22 +26,20 @@ def construct_bar2d(data, coordinates, materials):
     nodes = data[:,:-3].astype(int)
     idmat = data[:,-2].astype(int)
     coord = coordinates[nodes]
-    #elem_mater = materials[idmat]
-    elements = [Bar2D(nodes[i], coord[i], 
-                      areas[i], materials[idmat[i]]) for i in range(nelem)]
+    elements = [Bar2D(nodes[i], coord[i], areas[i], 
+                      materials[idmat[i]]) for i in range(nelem)]
     return elements
  
 def construct_quad4(data, coordinates, materials):
     # ************* data ****************
     # [n1, n2, n3, n4 thick, idmat, etype]
     nelem = data.shape[0]
-    thicks = data[:,-3]
+    thick = data[:,-3]
     nodes = data[:,:-3].astype(int)
     idmat = data[:,-2].astype(int)
-    new_coords = coordinates[nodes]
-    elem_mater = materials[idmat]
-    elements = [Quad4(nodes[i], new_coords[i], 
-                      thicks[i], elem_mater[i]) for i in range(nelem)]
+    coord = coordinates[nodes]
+    elements = [Quad4(nodes[i], coord[i], thick[i], 
+                      materials[idmat[i]]) for i in range(nelem)]
     return elements 
 
 

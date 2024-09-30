@@ -1,7 +1,6 @@
 
 import numpy as np
 from abc import ABC, abstractmethod
-from .stress_utils import get_yield_criterion
 
 class ElastoPlastic2D(ABC):
     def __init__(self, material):
@@ -16,7 +15,7 @@ class ElastoPlastic2D(ABC):
         pass
 
     @abstractmethod
-    def prepare_stress(self, stress):
+    def all_components(self, stress):
         pass
 
     def get_flowpl(self, avect):
@@ -58,7 +57,7 @@ class PlaneStress(ElastoPlastic2D):
         avect_sum = avect[0]+avect[1]
         return elast*poiss*(avect_sum)/(1-poiss**2)
     
-    def prepare_stress(self, stress):
+    def all_components(self, stress):
         mod_stress = np.insert(stress, 3, 0, axis=1)
         return mod_stress
         

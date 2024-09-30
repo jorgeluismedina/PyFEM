@@ -42,6 +42,8 @@ class Quad4(FElement):
         self.thick = thick
         self.shape = Node4Shape(ndofn=2)
         self.quad_scheme = Gauss_Legendre(2, ndim=2)
+        self.yield_crite = self.mater.yield_crite
+        self.const_model = self.mater.const_model
         self.set_stiff_mat()
 
     def get_strain_mat(self, r, s):
@@ -85,22 +87,21 @@ class Quad4(FElement):
 
     def update_elem(self, delta_stress):
         self.stress += delta_stress
-        yield_crite = self.mater.yield_crite
-        modi_stress = self.mater.const_model.prepare_stress(self.stress)
         prev_yielded = np.copy(self.yielded)
+        modi_stress = self.const_model.all_components(self.stress)
+        
         for i, stress in enumerate(modi_stress):
-            yield_crite.enter_stress(stress)
-            if yield_crite.check_yield():
+            self.yield_crite.enter_stress(stress)
+            
+            if self.yield_crite.check_yield():
                 if not self.yielded[i]:
-                    avect = yield_crite.get_flow_vector()
+                    avect = self.yield_crite.get_flow_vector()
                     self.dmatx[i] = self.mater.calculate_Dp(avect)
                     self.yielded[i] = True
 
-        #return prev_yielded, self.yielded
         if not np.array_equal(prev_yielded, self.yielded):
             bmatx_T = np.transpose(self.bmatx,(0,2,1))
             self.stiff = np.sum(bmatx_T @ self.dmatx @ self.bmatx * self.dvolu[:,None,None], axis=0)
-        #return self.stiff
 
     
 
@@ -150,11 +151,12 @@ class Bar2D(FElement):
         self.set_dof(2)
         vector = self.coord[1] - self.coord[0]
         self.xarea = xarea
-        self.elast = self.mater[0]
+        self.elast = self.mater.elast
         self.length = sp.linalg.norm(vector)
         self.dirvec = vector/self.length
-        self.get_stiff_mat()
-        self.get_mass_mat()
+        self.stress = 0.0
+        self.yielded = False
+        self.set_stiff_mat()
     
     def rotation_matrix(self):
         c, s = self.dirvec
@@ -162,18 +164,28 @@ class Bar2D(FElement):
                       [0, 0, c, s]])
         return R
     
-    def get_stiff_mat(self):
+    def set_stiff_mat(self):
         EA_L = self.elast * self.xarea / self.length
         K = EA_L * np.array([[ 1, -1],
                              [-1,  1]])
         R = self.rotation_matrix()
         self.stiff = R.T @ K @ R
 
-    def get_stress(self, u):
+    def calc_stress(self, u):
         E_L = self.elast / self.length
         c, s = self.dirvec
         B = np.array([-c, -s, c, s])
-        self.stress = E_L * B @ u # E*B*u
-        self.iforce = self.stress * self.xarea  
+        return E_L * B @ u
+
+    def update_elem(self, delta_stress):
+        self.stress += delta_stress
+        if abs(self.stress) > self.mater.uniax:
+            if not self.yielded:
+                elast = self.mater.elast
+                hards = self.mater.hards
+                facto = (1-elast/(elast+hards))
+                self.elast = facto*self.elast
+                self.stiff = facto*self.stiff
+                self.yielded = True  
 
 #class Beam2D()

@@ -1,7 +1,7 @@
 
 import numpy as np
 from abc import ABC, abstractmethod
-from .stress_utils import get_yield_criterion
+from .yield_criterion import get_yield_criterion
 from .const_models import get_const_model
 
 class Material(ABC):

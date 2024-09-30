@@ -4,20 +4,16 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
-import scipy as sp
 import matplotlib.pyplot as plt
-from scipy import linalg
-from itertools import product
-import time
-from pyfem.finite_elements import Quad4, Bar2D
 from pyfem.fea_system import Structure
 from pyfem.gauss_quad import Gauss_Legendre
+from pyfem.materials.material import Metal
+from pyfem.solvers import check_symmetric
 
 #***********************************
 #EJEMPLO DE ENSAMBLAJE DE MATRICES
 #***********************************
-materiales = np.array([[2.487e+11, 0.16, 23500],#1
-                       [2.5e+11, 0.2, 24000]]) #2
+
 
 coordenadas = np.array([(-1.0,-0.5),
                         ( 0.0,-0.5),
@@ -33,6 +29,7 @@ elementos1 = np.array([[0,1,4,3, 0.5, 0, 2],
                        [1,2,5,4, 0.5, 0, 2],
                        [4,5,8,7, 0.5, 0, 2],
                        [3,4,7,6, 0.5, 0, 2]])
+
 # elemento_barra1D = [nodos, area, idmat, etype]
 elementos2 = np.array([[0,8, 0.1, 1, 1],
                        [2,6, 0.1, 1, 1]])
@@ -44,36 +41,32 @@ restricciones = np.array([[0, 0, 0],
                           [2, 0, 0],
                           [2, 1, 0]])
 
-cargas_puntuales = np.array([[6, 0,  5000],
-                             [6, 1, -5000]])
+carga_total = np.array([[6, 0,  5000],
+                        [6, 1, -5000]])
 
-Str1 = Structure([elementos1, elementos2], coordenadas, materiales, 2)
-Str1.set_restraints(restricciones)
-Str1.set_loads(cargas_puntuales)
-Str1.assemble_stiff_mat()
+metal1 = Metal(2.487e+11, 0.16, 0.0, 16000, 1.0)#elast, poiss, hards, uniax, dense
+metal2 = Metal(2.500e+11, 0.20, 0.0, 16000, 1.0)#elast, poiss, hards, uniax, dense
+metal1.add_constitutive_model('PlaneStress')
+metal1.add_yield_criterion('Tresca')
+materiales = [metal1, metal2]
+
+structure = Structure(ndofn=2)
+structure.add_materials(materiales)
+structure.add_nodes(coordenadas)
+structure.add_elements(elementos1)
+structure.add_elements(elementos2)
+structure.set_restraints(restricciones)
+structure.set_total_loads(carga_total)
+
 
 #Prueba de la clase de Gauss_Legendre
 scheme = Gauss_Legendre(2,2)
 print(scheme.points)
 
-#Prueba de la clase Quad4
-elem1 = Str1.elems[0]
-print(elem1.shape_funcs(*scheme.points[0])[1])
+glob_stiff = structure.assemb_global_stiff()
 
 
-def check_symmetric(a, rtol=1e-05, atol=1e-08):
-    return np.allclose(a, a.T, rtol=rtol, atol=atol)
-
-print(check_symmetric(elem1.stiff))
+print(check_symmetric(glob_stiff))
 plt.figure()
-plt.imshow(elem1.stiff)
-#plt.show()
-
-#Prueba de la clase Structure
-Str1.solve_system()
-print(Str1.gl_disps)
-
-print(check_symmetric(Str1.gl_stiff))
-plt.figure()
-plt.imshow((Str1.gl_stiff != 0).astype(int), cmap='binary')
+plt.imshow((abs(glob_stiff) > 1e-10), cmap='binary')
 plt.show()

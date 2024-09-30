@@ -1,12 +1,8 @@
 
 import numpy as np
 import scipy as sp
-from scipy import linalg
 from scipy.sparse import coo_matrix
-from itertools import product
-from .finite_elements import Quad4, Bar2D
 from .elem_constructors import get_elem_constructor
-
 
 
 '''
@@ -19,34 +15,34 @@ al_dof = Indice de grados de libertad de la estructura
 fr_dof = Indice de grados de libertad libres de la estructura
 fx_dof = Indice de grados de libertad fijados de la estructura
 gl_stiff = Matriz de rigidez global
-gl_loads = Vector de cargas global
 re_stiff = Matriz de rigidez reducida
-re_loads = Vector de cargas reducido
+gl_tload = Vector global de cargas aplicadas totales
+re_tload = Vector reducido de cargas aplicadas totales
 gl_disps = Vector de desplazamientos global
 '''
 
 
 class Structure():
-    def __init__(self, element_data, coordinates, materials, ndofn):
+    def __init__(self, ndofn):
         self.ndofn = ndofn 
+        self.mater = []
+        self.elems = []
+
+    def add_nodes(self, coordinates):
+        #Considerar construir un array grande de dofs y que sean dato de entrada para construir un elemento
+        self.coord = coordinates
         self.nnods = coordinates.shape[0]
         self.ndofs = self.ndofn * self.nnods
         self.al_dof = np.arange(self.ndofs)
-        #Considerar construir un array grande de dofs y que sean dato de entrada para construir un elemento
 
-        self.elems = []
-        self.gl_stiff = None
-        self.gl_loads = None
-        self.gl_disps = None
+    def add_materials(self, materials):
+        self.mater = materials
 
-        self.assemble_elements(element_data, coordinates, materials)
-    
-    def assemble_elements(self, element_data, coordinates, materials): #element_data es una lista de arrays
-        for data in element_data:
-            elem_type = data[:,-1][0]  # data[0] El tipo de elemento está en el primer elemento de data (idea de chatGPT)
-            constructor = get_elem_constructor(elem_type)
-            if constructor:
-                self.elems.extend(constructor(data, coordinates, materials))
+    def add_elements(self, element_data):
+        # data[0] El tipo de elemento está en el primer elemento de data (idea de chatGPT)
+        elem_type = element_data[:,-1][0]
+        constructor = get_elem_constructor(elem_type)
+        self.elems.extend(constructor(element_data, self.coord, self.mater))
 
     def assemble_vector(self, vec_data, get_dof=False):
         vector = np.zeros(self.ndofs)
@@ -64,41 +60,21 @@ class Structure():
         self.gl_disps, self.fx_dof = self.assemble_vector(restraints, get_dof=True)
         self.fr_dof = np.setdiff1d(self.al_dof, self.fx_dof)
     
-    def set_loads(self, fix_loads, inc_loads=None, nincs=None):
-        fixloads = self.assemble_vector(fix_loads)
-        if inc_loads is not None:
-            incloads = self.assemble_vector(inc_loads)/nincs
-            incloads = np.tile(incloads,(nincs,1))
-            self.gl_loads = np.vstack([fixloads, incloads])
-            self.re_loads = self.gl_loads[:,self.fr_dof] 
-        else:
-            self.gl_loads = fixloads
-            self.re_loads = self.gl_loads[self.fr_dof]
+    def set_total_loads(self, tot_loads):
+        self.gl_tload = self.assemble_vector(tot_loads)
+        self.re_tload = self.gl_tload[self.fr_dof]
+    
 
     #Adaptar para sparse matrix (ensamblar la matriz global a partir de elem.dof_row y elem.dof_col)
-    def assemble_stiff_mat(self):
-        self.gl_stiff = np.zeros((self.ndofs, self.ndofs))
+    def assemb_global_stiff(self):
+        gl_stiff = np.zeros((self.ndofs, self.ndofs))
         for elem in self.elems:
-            ix_edof = np.ix_(elem.dof, elem.dof)
-            self.gl_stiff[ix_edof] += elem.stiff
+            gl_stiff[np.ix_(elem.dof, elem.dof)] += elem.stiff 
 
-        ix_freedof = np.ix_(self.fr_dof, self.fr_dof)
-        self.re_stiff = self.gl_stiff[ix_freedof]    
-    
-    def solve_system(self):
-        self.gl_disps[self.fr_dof] = sp.linalg.solve(self.re_stiff, self.re_loads, assume_a='sym')
-        #ne_stiff = self.gl_stiff[np.ix_(self.fx_dof, self.al_dof)]
-        #self.reacts[self.fx_dof] = ne_stiff @ self.gl_disps - self.gl_loads[self.fx_dof]
-
-    def get_element_stresses(self, gl_disps):
-        for elem in self.elems:
-            edisp = gl_disps[elem.dof]
-            elem.get_stress(edisp)
-
-    
-    #FUNCIONES PARA APLICAR METODO DE LA RIGIDEZ TANGENCIAL
-    #Se retorna la matriz de rigidez tangente reducida
-    def retan_stiff(self, re_disps):
+        re_stiff = gl_stiff[np.ix_(self.fr_dof, self.fr_dof)]
+        return re_stiff#, gl_stiff
+ 
+    def update_global_stiff(self, re_disps):
         gl_stiff = np.zeros((self.ndofs, self.ndofs))
         gl_disps = np.zeros(self.ndofs)
         gl_disps[self.fr_dof] = re_disps
@@ -110,14 +86,7 @@ class Structure():
         re_stiff = gl_stiff[np.ix_(self.fr_dof, self.fr_dof)]
         return re_stiff
 
-    def residual_forces(self, re_stiff, re_disps, re_loads):
-        return re_stiff @ re_disps + re_loads
 
-    #Devuelve los desplazamientos de los dofs libres
-    def direct_solve(self, re_stiff, re_loads):
-        gl_disps = np.zeros(self.ndofs)
-        gl_disps[self.fr_dof] = sp.linalg.solve(re_stiff, re_loads, assume_a='sym')
-        return gl_disps
 
 
         
