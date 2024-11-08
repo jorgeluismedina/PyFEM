@@ -81,7 +81,7 @@ class Structure():
         for elem in self.elems:
             edisp = gl_disps[elem.dof]
             dstrs = elem.calc_stress(edisp)
-            elem.update_elem(dstrs)
+            elem.update_stiff(dstrs)
             gl_stiff[np.ix_(elem.dof, elem.dof)] += elem.stiff  
         re_stiff = gl_stiff[np.ix_(self.fr_dof, self.fr_dof)]
         return re_stiff

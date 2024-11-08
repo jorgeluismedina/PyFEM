@@ -12,19 +12,19 @@ class Bar1D(Element):
         self.length = np.abs(self.coord[1] - self.coord[0])
         self.stress = 0.0
         self.yielded = False
-        self.set_stiff_mat()
+        self.init_element()
     
-    def set_stiff_mat(self):
+    def init_element(self):
         EA_L = self.elast * self.xarea / self.length
         self.stiff = EA_L * np.array([[ 1, -1],
                                       [-1,  1]])
 
-    def calc_stress(self, u):
+    def calc_stress(self, disps):
         E_L = self.elast / self.length
         B = 1/self.length * np.array([-1, 1])
-        return E_L * B @ u
+        return E_L * B @ disps
 
-    def update_elem(self, delta_stress):
+    def update_stiff(self, delta_stress):
         self.stress += delta_stress
         if abs(self.stress) > self.mater.uniax:
             if not self.yielded:
@@ -47,7 +47,7 @@ class Bar2D(Element):
         self.dirvec = vector/self.length
         self.stress = 0.0
         self.yielded = False
-        self.set_stiff_mat()
+        self.init_element()
     
     def rotation_matrix(self):
         c, s = self.dirvec
@@ -55,20 +55,20 @@ class Bar2D(Element):
                       [0, 0, c, s]])
         return R
     
-    def set_stiff_mat(self):
+    def init_element(self):
         EA_L = self.elast * self.xarea / self.length
         K = EA_L * np.array([[ 1, -1],
                              [-1,  1]])
         R = self.rotation_matrix()
         self.stiff = R.T @ K @ R
 
-    def calc_stress(self, u):
+    def calc_stress(self, disps):
         E_L = self.elast / self.length
         c, s = self.dirvec
         B = np.array([-c, -s, c, s])
-        return E_L * B @ u
+        return E_L * B @ disps
 
-    def update_elem(self, delta_stress):
+    def update_stiff(self, delta_stress):
         self.stress += delta_stress
         if abs(self.stress) > self.mater.uniax:
             if not self.yielded:

@@ -17,13 +17,13 @@ class Element(ABC):
         self.dof = np.repeat(ndofn*self.nodes, ndofn) + np.tile(node_dof, self.nnods)
     
     @abstractmethod
-    def set_stiff_mat(self):
+    def init_element(self):
         pass
 
     @abstractmethod
-    def calc_stress(self, u):
+    def calc_stress(self, disps):
         pass
 
     @abstractmethod
-    def update_elem(self, stress):
+    def update_stiff(self, delta_stress):
         pass

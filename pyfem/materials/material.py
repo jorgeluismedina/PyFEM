@@ -36,6 +36,7 @@ class Metal(Material):
     def add_yield_criterion(self, yield_criterion):
         self.yield_crite = get_yield_criterion(yield_criterion)(self)
 
+
 class CSR(Material):
     def __init__(self, elast, poiss, hards, frict, cohes, dense):
         super().__init__(elast, poiss, hards, dense)
