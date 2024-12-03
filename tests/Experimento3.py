@@ -36,18 +36,6 @@ suptag = np.arange(inftag[-1]+1, coordenadas.shape[0])
 print(inftag)
 print(suptag)
 print(coordenadas.shape)
-'''
-coordenadas = np.array([[0.0, 0.0],
-                        [2.5, 0.0],
-                        [5.0, 0.0],
-                        [7.5, 0.0],
-                        [10.0, 0.0],
-                        [0.0, 1.0],
-                        [2.5, 1.0],
-                        [5.0, 1.0],
-                        [7.5, 1.0],
-                        [10.0, 1.0]])
-'''
 
 #elemento_quad4 = [nodos, thick, idmat, idtype]
 elementos = np.array([[0, 1, 12, 11, beam_width, idmat, etype],

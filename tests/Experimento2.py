@@ -60,8 +60,9 @@ structure.set_total_loads(carga_total)
 
 
 #Prueba de la clase de Gauss_Legendre
-scheme = Gauss_Legendre(2,2)
+scheme = Gauss_Legendre(3,2)
 print(scheme.points)
+print(scheme.weights)
 
 glob_stiff = structure.assemb_global_stiff()
 
