@@ -66,8 +66,15 @@ print(scheme.weights)
 
 glob_stiff = structure.assemb_global_stiff()
 
+print('Elements stiffness')
+for i, e in enumerate(structure.elems):
+    print(e.stiff)
+    print('symmetric: ', check_symmetric(e.stiff))
 
-print(check_symmetric(glob_stiff))
+print('\nGlobal Stiffnes\n')
+print(glob_stiff)
+print('symmetric: ', check_symmetric(glob_stiff))
+
 plt.figure()
-plt.imshow((abs(glob_stiff) > 1e-10), cmap='binary')
+plt.imshow((abs(glob_stiff) > 1e-6), cmap='binary')
 plt.show()

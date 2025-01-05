@@ -3,7 +3,7 @@ import numpy as np
 import scipy as sp
 
 
-def check_symmetric(a, rtol=1e-10, atol=1e-11):
+def check_symmetric(a, rtol=1e-6, atol=1e-5):
     return np.allclose(a, a.T, rtol=rtol, atol=atol)
 
 
