@@ -7,3 +7,6 @@
 
 #Imagenes
 *.png
+
+#Archivos Ftool
+*.ftl

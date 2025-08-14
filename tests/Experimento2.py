@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
 import matplotlib.pyplot as plt
-from pyfem.fea_system import Structure
+from pyfem.femclass import Structure
 from pyfem.gauss_quad import Gauss_Legendre
 from pyfem.materials.material import Metal
 from pyfem.solvers import check_symmetric

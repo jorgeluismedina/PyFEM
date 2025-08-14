@@ -1,5 +1,6 @@
 
 import numpy as np
+from scipy.linalg import cho_factor, cho_solve
 import scipy as sp
 
 
@@ -14,25 +15,54 @@ def check_conver(resid, force, tol):
     return ratio <= tol
 
 
-def tangencial_stiff(struct, facto, nincs=100, max_iter=10, tol=0.01):
-    displacements = np.zeros((nincs+1, struct.ndofs))
-    applied_loads = np.zeros((nincs+1, struct.ndofs))
-    free_dof = struct.fr_dof
+def solve_linear_static(model): #estatic
+
+    model.set_restraints()
+    fixd_dof = model.fixd_dof
+    free_dof = model.free_dof
+
+    glob_stiff = model.assemb_global_stiff()
+    glob_loads = model.assemb_global_loads()
+    #glob_loads = model.glob_loads
+    glob_disps = model.glob_disps
+
+    # Reduccion del sistema
+    stiff_ff = glob_stiff[np.ix_(free_dof, free_dof)]
+    stiff_sf = glob_stiff[np.ix_(fixd_dof, free_dof)]
+    glob_loads -= glob_stiff[:,fixd_dof] @ glob_disps[fixd_dof] # desplazamientos impuestos -> fuerzas
+
+    # Resolucion del Sistema
+    #if check_symmetric(stiff_ff):
+    #free_disps = sp.linalg.solve(stiff_ff, glob_loads[free_dof])
+    free_disps = cho_solve(cho_factor(stiff_ff), glob_loads[free_dof])
+    glob_disps[free_dof] = free_disps
+    glob_react = stiff_sf @ free_disps - glob_loads[fixd_dof]
+
+    return glob_disps, glob_react
+
+
+
+def tangencial_stiff(model, facto, nincs=100, max_iter=10, tol=0.01):
+    displacements = np.zeros((nincs+1, model.ndofs))
+    applied_loads = np.zeros((nincs+1, model.ndofs))
+    free_dof = model.fr_dof
     tfact = 0.0
 
-    astif = struct.assemb_global_stiff() #stiffness matrix (H)
+    astif = model.assemb_global_stiff() #stiffness matrix (H)
     disps = np.zeros(free_dof.shape[0]) #displacement guess (phi)
-    tload = struct.re_tload #total force (f)
+    tload = model.re_tload #total force (f)
 
+    last_step = 0
     for step in range(nincs):
         if tfact >= 1.0:
+            last_step = step
             break
         
         print(f"load step: {step+1}")
         force = facto*tload
         unbalance = False
 
-        for elem in struct.elems:
+        for elem in model.elems:
             print(elem.yielded)
 
         for ite in range(max_iter): 
@@ -47,15 +77,15 @@ def tangencial_stiff(struct, facto, nincs=100, max_iter=10, tol=0.01):
             unbalance = True
             # phi = phi + delta_phi
             disps += -sp.linalg.solve(astif, resid, assume_a='sym')
-            astif = struct.update_global_stiff(disps)
+            astif = model.update_global_stiff(disps)
         
         if not unbalance:
-            astif = struct.update_global_stiff(disps)
+            astif = model.update_global_stiff(disps)
 
         displacements[step+1][free_dof] = disps
         applied_loads[step+1][free_dof] = force
         tfact += facto
     
-    cum_displacements = np.cumsum(displacements[:step+1], axis=0)
-    cum_applied_loads = np.cumsum(applied_loads[:step+1], axis=0)
+    cum_displacements = np.cumsum(displacements[:last_step+1], axis=0)
+    cum_applied_loads = np.cumsum(applied_loads[:last_step+1], axis=0)
     return cum_displacements, cum_applied_loads
