@@ -31,6 +31,7 @@ class Model():
     def add_sections(self, sections): # Son necesarios ahora?
         self.sections = sections
 
+    # NODOS
     # Añadir todo uno por uno? los nodos creo que no
     def add_nodes(self, coordinates):
         #Considerar construir un array grande de dofs y que sean dato de entrada para construir un elemento
@@ -42,6 +43,15 @@ class Model():
         self.glob_disps = np.zeros(self.ndofs)
         self.glob_loads = np.zeros(self.ndofs)
 
+    def add_node_restraint(self, tag, restraints):
+        self.fixd_nodes.append(tag)
+        self.restraints.append(restraints)
+
+    def add_node_load(self, tag, loads): 
+        self.loaded_nodes.append(tag)
+        self.nodal_loads.append(loads)
+
+    # ELEMENTOS
     def add_element(self, tag, nodes, section, material, etype):
         constructor = get_constructor(etype)
         if constructor is None:
@@ -58,6 +68,8 @@ class Model():
     def clear_elements(self):
         self.elems.clear()
 
+    
+    # FUNCIONES
     def assemb_global_vec(self, nodes, values):
         ndofn = self.ndofn
         nodes = np.array(nodes) # lista de nodos
@@ -65,7 +77,6 @@ class Model():
         dofs = np.tile(nodes[:,None]*ndofn, ndofn) + np.arange(ndofn)
         dofs = dofs.astype(int).flatten() # dofs con asignacion
         return dofs, vals #nodes, dofs, vals
-
         
     def set_restraints(self):
         dofs, vals = self.assemb_global_vec(self.fixd_nodes, self.restraints)
@@ -102,7 +113,6 @@ class Model():
             edisp = glob_disps[elem.dof]
             elem.calculate_forces(edisp)
 
- 
     def update_global_stiff(self, re_disps):
         gl_stiff = np.zeros((self.ndofs, self.ndofs))
         gl_disps = np.zeros(self.ndofs)

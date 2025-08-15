@@ -10,3 +10,6 @@
 
 #Archivos Ftool
 *.ftl
+
+# Vscode
+.vscode/

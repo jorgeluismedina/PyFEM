@@ -2,6 +2,7 @@
 import numpy as np
 from .elements.bar1d import Bar1D
 from .elements.truss2d import Truss2D
+from .elements.truss3d import Truss3D
 from .elements.frame2d import Frame2D
 from .elements.frame22d import Frame22D
 from .elements.quad4 import Quad4
@@ -13,6 +14,9 @@ def construct_bar1d(nodes, coord, section, material):
 
 def construct_truss2d(nodes, coord, section, material):
     return Truss2D(nodes, coord, section, material)
+
+def construct_truss3d(nodes, coord, section, material):
+    return Truss3D(nodes, coord, section, material)
 
 def construct_frame2d(nodes, coord, section, material):
     return Frame2D(nodes, coord, section, material)
