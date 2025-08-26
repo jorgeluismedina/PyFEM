@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
-from pyfem.femclass import Structure
+from pyfem.femclass import Model
 from pyfem.materials.material import Metal
 from pyfem.solvers import tangencial_stiff
 
@@ -38,7 +38,7 @@ carga_total = np.array([[0,0,-3],
 #1. INICIALIZACION DE LA CLASE STRUCTURE
 some_metal = Metal(10000, 0.2, 1000, 10, 1.0)#elast, poiss, hards, uniax, dense
 
-structure =  Structure(ndofn=1)
+structure =  Model(ndofn=1)
 structure.add_materials([some_metal])
 structure.add_nodes(coordenadas)
 structure.add_elements(elementos)
@@ -53,6 +53,7 @@ displacements, applied_loads = results
 displacements = np.abs(displacements)
 applied_loads = np.abs(applied_loads)
 tot_load = np.sum(applied_loads, axis=1)
+
 
 plt.style.use(['science','notebook','grid'])
 fig, ax = plt.subplots(1,1, figsize=(9,6))

@@ -8,6 +8,9 @@
 #Imagenes
 *.png
 
+#HTML
+*.html
+
 #Archivos Ftool
 *.ftl
 

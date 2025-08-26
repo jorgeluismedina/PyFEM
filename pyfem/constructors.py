@@ -37,8 +37,9 @@ def construct_quad8(nodes, coord, section, material):
 def get_constructor(elem_type):
     element_constructors = {'Bar1D': construct_bar1d,
                             'Truss2D': construct_truss2d,
+                            'Truss3D': construct_truss3d,
                             'Frame2D': construct_frame2d,
-                            'Frame22D': construct_frame2d,
+                            'Frame22D': construct_frame22d,
                             'Quad4': construct_quad4,
                             'Quad8': construct_quad8}
     

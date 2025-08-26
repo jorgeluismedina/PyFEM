@@ -26,6 +26,12 @@ class Truss2D(Element):
                                       [cs, ss, -cs, -ss],
                                       [-cc, -cs, cc, cs],
                                       [-cs, -ss, cs, ss]])
+        
+        pAL = self.mater.dense * self.section.xarea * self.length
+        self.mass = pAL/6 * np.array([[2*cc, 2*cs, cc, cs],
+                                      [2*cs, 2*ss, cs, ss],
+                                      [cc, cs, 2*cc, 2*cs],
+                                      [cs, ss, 2*cs, 2*ss]])
 
     def calculate_forces(self, glob_disps):
         EA_L = self.elast * self.xarea / self.length

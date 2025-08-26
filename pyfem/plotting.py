@@ -59,7 +59,7 @@ def plot_imshow(Mat, n, part=1):
 
 
 
-def plot_model(mod,):
+def plot_2dmodel(mod,):
 
     plt.figure()
     ax = plt.gca()
@@ -78,7 +78,7 @@ def plot_model(mod,):
     return ax
 
 
-def plot_3dtruss(mod):
+def plot_3dmodel(mod):
 
     x_lines, y_lines, z_lines = [], [], []
     

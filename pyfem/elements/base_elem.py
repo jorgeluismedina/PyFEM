@@ -3,7 +3,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 class Element(ABC):
-    def __init__(self, nodes, coord, section, mater): 
+    def __init__(self, nodes, coord, section, mater): # Que no tenga el atributo section
         self.coord = coord
         self.nodes = nodes
         self.mater = mater

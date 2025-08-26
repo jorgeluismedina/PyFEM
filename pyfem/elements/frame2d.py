@@ -8,13 +8,6 @@ class Frame2D(Element):
         super().__init__(nodes, coord, section, mater)
         self.set_dof(3)
         vector = self.coord[1] - self.coord[0]
-        #self.xarea = section['xarea']
-        #self.inrt3 = section['inrt3']
-        #self.elast = mater['elast']
-        self.xarea = self.section.xarea
-        self.inrt3 = self.section.inrt3
-        self.elast = self.mater.elast
-        
         self.length = sp.linalg.norm(vector)
         self.dirvec = vector/self.length
         self.init_element()
@@ -24,12 +17,13 @@ class Frame2D(Element):
         c2 = c*c
         s2 = s*s
         cs = c*s
-
-        oneEA = self.elast * self.xarea / self.length
-        twoEI = 2 * self.elast * self.inrt3 / self.length
-        fourEI = 4 * self.elast * self.inrt3 / self.length
-        twelveEI = 12 * self.elast * self.inrt3 / self.length**3
-        sixEI = 6 * self.elast * self.inrt3 / self.length**2
+        EA = self.mater.elast * self.section.xarea
+        EI = self.mater.elast * self.section.inrt3
+        oneEA = EA / self.length
+        twoEI = 2 * EI / self.length
+        fourEI = 4 * EI / self.length
+        twelveEI = 12 * EI / self.length**3
+        sixEI = 6 * EI / self.length**2
 
         k11 = oneEA*c2 + twelveEI*s2
         k22 = oneEA*s2 + twelveEI*c2

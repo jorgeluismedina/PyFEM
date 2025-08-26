@@ -35,14 +35,20 @@ def principal_stresses_mohr(normal_stresses):
     return principal_stresses 
 
 
-
+class StressState2D():
+    def __init__(self, sx, sy, txy, sz):
+        self.sx = sx
+        self.sy = sy
+        self.txy = txy
+        self.sz = sz
+        #self.hi= 
 
 
 class YieldCriterion(ABC):
     def __init__(self, material):
         self.root3 = np.sqrt(3)
         self.mater = material
-        self.uniax = self.mater.uniax if hasattr(self.mater, 'uniax') else None
+        #self.uniax = self.mater.uniax if hasattr(self.mater, 'uniax') else None
 
     def get_theta(self):
         J3 = self.devia[3]*(self.devia[3]**2-self.J2)
@@ -73,12 +79,13 @@ class YieldCriterion(ABC):
         avect = cons1*veca1 + cons2*veca2 + cons3*veca3
         return avect
 
+
     def enter_stress(self, stress): #[sx, sy, tyx, sz]
         self.calc_invariants(stress)
 
     def check_yield(self):
         steff = self.stress_level()
-        return steff > self.uniax
+        return steff > self.mater.uniax
         
     @abstractmethod
     def stress_level(self): #(effective stress)

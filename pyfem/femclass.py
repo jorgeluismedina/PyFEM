@@ -33,6 +33,7 @@ class Model():
 
     # NODOS
     # Añadir todo uno por uno? los nodos creo que no
+
     def add_nodes(self, coordinates):
         #Considerar construir un array grande de dofs y que sean dato de entrada para construir un elemento
         self.coord = coordinates
@@ -57,6 +58,7 @@ class Model():
         if constructor is None:
             raise ValueError(f"Not supported element type: {etype}")
         
+        #coord = 
         coord = self.coord[nodes]
         nodes = np.array(nodes)
         self.elems.append(constructor(nodes, coord, section, material))
@@ -108,10 +110,20 @@ class Model():
 
         return glob_stiff
     
+    def assemb_global_mass(self):
+        glob_mass = np.zeros((self.ndofs, self.ndofs))
+        for elem in self.elems:
+            glob_mass[np.ix_(elem.dof, elem.dof)] += elem.mass 
+
+        return glob_mass
+    
     def calculate_forces(self, glob_disps):
         for elem in self.elems:
             edisp = glob_disps[elem.dof]
             elem.calculate_forces(edisp)
+
+    #def get_modes(self,):
+
 
     def update_global_stiff(self, re_disps):
         gl_stiff = np.zeros((self.ndofs, self.ndofs))

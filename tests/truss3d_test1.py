@@ -5,18 +5,21 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
+import plotly.io as pio
+pio.renderers.default = "chrome"
 
-import matplotlib.pyplot as plt
-from pyfem0.femclass import Model
-from pyfem0.plotting import plot_model, print_matrix, plot_3dtruss
-from pyfem0.solvers import solve_linear_static
+from pyfem.femclass import Model
+from pyfem.materials.material import Material
+from pyfem.sections import FrameSection
+from pyfem.plotting import print_matrix, plot_3dmodel
+from pyfem.solvers import solve_linear_static
 
 # Materiales
-steel = {'elast': 2.0e8} #[KN/m2]
+steel = Material(elast=2.0e8, poiss=0.2, dense=1.0) #[KN/m2]
 materials = [steel]
 
 # Secciones
-sect1 = {'xarea': 0.00139345} #[m2]
+sect1 = FrameSection(xarea=0.00139345, inrt3=8.358e-5) #[m2]
 sections = [sect1]
 
 # Coordenadas   
@@ -51,7 +54,6 @@ mod.add_element(11, [3, 5], sect1, steel, 'Truss3D')
 mod.add_node_restraint(0, [1, 1, 1])
 mod.add_node_restraint(1, [1, 1, 1])
 mod.add_node_restraint(4, [0, 0, 1])
-mod.set_restraints()
 
 # Cargas nodales
 mod.add_node_load(5, [0.0, 0.0, -100.0])
@@ -69,5 +71,6 @@ mod.calculate_forces(glob_disps)
 print('Fuerzas internas')
 print([elem.force for elem in mod.elems])
 
-fig = plot_3dtruss(mod)
-fig.show()
+fig = plot_3dmodel(mod)
+#fig.show()
+fig.write_html("tests/3dtruss1.html", include_plotlyjs="cdn", full_html=True)

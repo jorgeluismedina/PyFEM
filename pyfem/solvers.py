@@ -40,7 +40,50 @@ def solve_linear_static(model): #estatic
 
     return glob_disps, glob_react
 
+def vibration_modes(model):
 
+    K = model.assemb_global_stiff()
+    M = model.assemb_global_mass()
+    # Calculo de los autovectores y autovalores
+    w2, Phi = sp.linalg.eig(K, M)
+
+    # Ordenamiento de autovalores de manera creciente
+    iw = w2.argsort()
+    w2 = w2[iw]
+    Phi = Phi[:,iw]
+
+    #Frecuencias naturales
+    wk = np.sqrt(np.real(w2))
+    fk = wk/2/np.pi # [Hz]
+
+    return fk, wk, Phi
+ 
+#'''
+def finite_differences(model, t0, tf, dt, x0, v0, a0):
+
+    sol = []
+    nsteps = (tf - t0) / dt
+
+    M = model.assemb_global_mass()
+    K = model.assemb_global_stiff()
+    F = model.assemb_global_loads()
+    C = M + K
+
+    aux = F - C@v0 - K@x0
+    a0 = sp.linalg.solve(M, aux, assume_a='sym')
+    x_back = dt*dt*a0 / 2 - dt*v0 + x0
+    x_cent = np.zeros_like(x0)
+
+    for ti in range(nsteps):
+        MC = M / (dt*dt) + C / (2*dt)
+        aux2 = F - K
+        x_ford = sp.linal.solve(MC, F)
+
+
+    #v = x0
+    #a
+
+#'''
 
 def tangencial_stiff(model, facto, nincs=100, max_iter=10, tol=0.01):
     displacements = np.zeros((nincs+1, model.ndofs))
@@ -54,7 +97,7 @@ def tangencial_stiff(model, facto, nincs=100, max_iter=10, tol=0.01):
 
     last_step = 0
     for step in range(nincs):
-        if tfact >= 1.0:
+        if tfact >= 1.0: # tfact es el ratio total de carga que se ha aplicado hasta ahora
             last_step = step
             break
         

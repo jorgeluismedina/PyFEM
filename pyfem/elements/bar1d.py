@@ -7,7 +7,6 @@ class Bar1D(Element):
     def __init__(self, nodes, coord, section, mater): #mater= [E, nu, sy, Hp, dens]
         super().__init__(nodes, coord, section, mater)
         self.set_dof(1)
-        self.xarea = self.section.xarea
         self.elast = self.mater.elast
         self.length = np.abs(self.coord[1] - self.coord[0])
         self.stress = 0.0
@@ -15,7 +14,7 @@ class Bar1D(Element):
         self.init_element()
     
     def init_element(self):
-        EA_L = self.elast * self.xarea / self.length
+        EA_L = self.mater.elast * self.section.xarea / self.length
         self.stiff = EA_L * np.array([[ 1, -1],
                                       [-1,  1]])
 

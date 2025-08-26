@@ -8,8 +8,6 @@ class Truss3D(Element):
         super().__init__(nodes, coord, section, mater)
         self.set_dof(3)
         vector = self.coord[1] - self.coord[0]
-        self.xarea = section.xarea
-        self.elast = mater.elast
         self.length = sp.linalg.norm(vector)
         self.dirvec = vector/self.length
         self.init_element()
@@ -22,7 +20,7 @@ class Truss3D(Element):
         cxy = cx*cy
         cxz = cx*cz
         cyz = cy*cz
-        EA_L = self.elast * self.xarea / self.length
+        EA_L = self.mater.elast * self.section.xarea / self.length
         self.stiff = EA_L * np.array([[cx2, cxy, cxz, -cx2, -cxy, -cxz],
                                       [cxy, cy2, cyz, -cxy, -cy2, -cyz],
                                       [cxz, cyz, cz2, -cxz, -cyz, -cz2],
@@ -30,8 +28,17 @@ class Truss3D(Element):
                                       [-cxy, -cy2, -cyz, cxy, cy2, cyz],
                                       [-cxz, -cyz, -cz2, cxz, cyz, cz2]])
         
+        pAL = self.mater.dense * self.section.xarea * self.length
+        self.mass = pAL/6 * np.array([[2*cx2, 2*cxy, 2*cxz, cx2, cxy, cxz],
+                                      [2*cxy, 2*cy2, 2*cyz, cxy, cy2, cyz],
+                                      [2*cxz, 2*cyz, 2*cz2, cxz, cyz, cz2],
+                                      [cx2, cxy, cxz, 2*cx2, 2*cxy, 2*cxz],
+                                      [cxy, cy2, cyz, 2*cxy, 2*cy2, 2*cyz],
+                                      [cxz, cyz, cz2, 2*cxz, 2*cyz, 2*cz2]])
+
+        
     def calculate_forces(self, glob_disps):
-        EA_L = self.elast * self.xarea / self.length
+        EA_L = self.mater.elast * self.section.xarea / self.length
         cx, cy, cz = self.dirvec
         B = np.array([-cx, -cy, -cz, cx, cy, cz])
         self.force = EA_L * B @ glob_disps

@@ -8,15 +8,17 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 from pyfem.femclass import Model
-from pyfem.plotting import plot_model, print_matrix
+from pyfem.materials.material import Material
+from pyfem.sections import FrameSection
+from pyfem.plotting import plot_2dmodel, print_matrix
 from pyfem.solvers import solve_linear_static
 
 # Materiales
-steel = {'elast': 2.1e8} #[KN/m2]
+steel = Material(elast=2.1e8, poiss=0.2, dense=1.0) #[KN/m2]
 materials = [steel]
 
 # Secciones
-sect1 = {'xarea': 0.00421, 'inrt3': 8.358e-5} #[m2]
+sect1 = FrameSection(xarea=0.00421, inrt3=8.358e-5) #[m2]
 sections = [sect1]
 
 # Coordenadas
@@ -60,5 +62,6 @@ unit_changer = np.tile(np.array([1000, 1000, 1]), mod.nnods)
 print_matrix(glob_disps*unit_changer, 2, floatfmt=".3e")
 print(reactions)
 
-fig1 = plot_model(mod)
+
+fig1 = plot_2dmodel(mod)
 plt.show()

@@ -3,7 +3,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 class ElastoPlastic2D(ABC):
-    def __init__(self, material):
+    def __init__(self, material): 
         self.mater = material
 
     @abstractmethod
@@ -18,9 +18,7 @@ class ElastoPlastic2D(ABC):
     def all_components(self, stress):
         pass
 
-    def get_flowpl(self, avect):
-        elast = self.mater.elast
-        poiss = self.mater.poiss
+    def get_flowpl(self, elast, poiss, avect):
         fmul1 = elast/(1+poiss)
         fmult = self.get_fmult1(avect)
         dvect = np.array([fmul1*avect[0] + fmult, 
@@ -29,10 +27,10 @@ class ElastoPlastic2D(ABC):
                           fmul1*avect[3] + fmult])
         return dvect
     
-    def calculate_Dp(self, avect):
+    def calculate_Dp(self, elast, poiss, avect):
         D = self.calculate_D()
         dimen = D.shape[0]
-        dvect = self.get_flowpl(avect)
+        dvect = self.get_flowpl(elast, poiss, avect)
         denom = self.mater.hards + dvect@avect
         dDdDT = np.tensordot(dvect,dvect, axes=0)[:dimen, :dimen]
         return D - dDdDT/denom
