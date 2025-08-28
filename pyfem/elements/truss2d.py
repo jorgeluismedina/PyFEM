@@ -8,8 +8,6 @@ class Truss2D(Element):
         super().__init__(nodes, coord, section, mater)
         self.set_dof(2)
         vector = self.coord[1] - self.coord[0]
-        self.xarea = self.section.xarea
-        self.elast = self.mater.elast
         self.length = sp.linalg.norm(vector)
         self.dirvec = vector/self.length
         self.stress = 0.0
@@ -21,7 +19,7 @@ class Truss2D(Element):
         cc = c*c
         ss = s*s
         cs = c*s
-        EA_L = self.elast * self.xarea / self.length
+        EA_L = self.mater.elast * self.section.xarea / self.length
         self.stiff = EA_L * np.array([[cc, cs, -cc, -cs],
                                       [cs, ss, -cs, -ss],
                                       [-cc, -cs, cc, cs],
@@ -34,7 +32,7 @@ class Truss2D(Element):
                                       [cs, ss, 2*cs, 2*ss]])
 
     def calculate_forces(self, glob_disps):
-        EA_L = self.elast * self.xarea / self.length
+        EA_L = self.mater.elast * self.section.xarea / self.length
         c, s = self.dirvec
         B = np.array([-c, -s, c, s])
         self.force = EA_L * B @ glob_disps

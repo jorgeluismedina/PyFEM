@@ -8,4 +8,4 @@ class FrameSection:
 
 class AreaSection:
     def __init__(self, thick):
-        self.xarea = thick
+        self.thick = thick

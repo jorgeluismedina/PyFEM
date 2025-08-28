@@ -33,7 +33,7 @@ def solve_linear_static(model): #estatic
 
     # Resolucion del Sistema
     #if check_symmetric(stiff_ff):
-    #free_disps = sp.linalg.solve(stiff_ff, glob_loads[free_dof])
+    #free_disps = sp.linalg.solve(stiff_ff, glob_loads[free_dof], assume_a = 'sym')
     free_disps = cho_solve(cho_factor(stiff_ff), glob_loads[free_dof])
     glob_disps[free_dof] = free_disps
     glob_react = stiff_sf @ free_disps - glob_loads[fixd_dof]
@@ -42,10 +42,16 @@ def solve_linear_static(model): #estatic
 
 def vibration_modes(model):
 
+    model.set_restraints()
+    #fixd_dof = model.fixd_dof
+    free_dof = model.free_dof
     K = model.assemb_global_stiff()
     M = model.assemb_global_mass()
+    Kff = K[np.ix_(free_dof, free_dof)]
+    Mff = M[np.ix_(free_dof, free_dof)]
+
     # Calculo de los autovectores y autovalores
-    w2, Phi = sp.linalg.eig(K, M)
+    w2, Phi = sp.linalg.eig(Kff, Mff)
 
     # Ordenamiento de autovalores de manera creciente
     iw = w2.argsort()
@@ -56,7 +62,7 @@ def vibration_modes(model):
     wk = np.sqrt(np.real(w2))
     fk = wk/2/np.pi # [Hz]
 
-    return fk, wk, Phi
+    return fk, Phi
  
 #'''
 def finite_differences(model, t0, tf, dt, x0, v0, a0):

@@ -40,6 +40,8 @@ class Frame2D(Element):
                                [ k14, -k12, -k13,  k11,  k12, -k13],
                                [-k12, -k22, -k23,  k12,  k22, -k23],
                                [ k13,  k23,  k36, -k13, -k23,  k33]])
+        
+  
 
     def add_loads(self, fui, fvi, mi, fuj, fvj, mj): # Darle el signo de carga antes
         c, s = self.dirvec

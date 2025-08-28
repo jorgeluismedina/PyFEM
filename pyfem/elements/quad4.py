@@ -13,10 +13,11 @@ class Quad4(Element):
         super().__init__(nodes, coord, section, mater)
         self.set_dof(2)
         self.thick = self.section.thick
-        self.yield_crite = self.mater.yield_crite
-        self.const_model = self.mater.const_model
+        #self.yield_crite = self.mater.yield_crite
+        #self.const_model = self.mater.const_model
         self.shape = Node4Shape() # Que esta clase sean funciones de esta misma clase para ahorrar memoria (instancias repetidas)
         self.quad_scheme = Gauss_Legendre(2, ndim=2) # Que Gauss_Legendre solo sea una funcion para ahorrar (instancias repetidas)
+        self.init_element()
     
     
     def get_shape_mat(self, r, s):
@@ -52,7 +53,14 @@ class Quad4(Element):
         npoin = self.quad_scheme.npoin
         self.stress = np.zeros((npoin,3))
         self.yielded = np.zeros(npoin, dtype=bool)
-        self.dmatx = self.mater.calculate_dmatx(npoin)
+        # modificar
+        const = self.mater.elast/(1-self.mater.poiss**2)
+        conss = (1-self.mater.poiss)/2
+        dmatx = const*np.array([[1, self.mater.poiss, 0],
+                                [self.mater.poiss, 1, 0],
+                                [0, 0, conss]])
+        self.dmatx = np.tile(dmatx, (npoin,1,1))
+        #-------------------------------------------
         self.bmatx = np.zeros((npoin,3,8)) # B = [(3,8),(3,8),(3,8),(3,8)]
         self.nmatx = np.zeros((npoin,2,8)) # N = [(2,8),(2,8),(2,8),(2,8)]
         det_J = np.zeros(npoin)
@@ -74,6 +82,7 @@ class Quad4(Element):
         #nodes_stress = gvals[order] @ gauss_stress[order] #4x3
         return gauss_stress#, nodes_stress
     
+    '''
     def update_stiff(self, delta_stress):
         self.stress += delta_stress
         modi_stress = self.const_model.all_components(self.stress)
@@ -90,3 +99,5 @@ class Quad4(Element):
 
         if not np.array_equal(prev_yielded, self.yielded):
             self.stiff = self.get_stiff_mat()
+
+    '''

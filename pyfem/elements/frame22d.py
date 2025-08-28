@@ -40,10 +40,25 @@ class Frame22D(Element):
         kmatx[5, [1,2,4,5]] = [ sixEI,     twoEI,   -sixEI,      fourEI]
 
         return kmatx
+    
+    def mmatx(self):
+        pA = self.mater.dense * self.section.xarea
+        L = self.length
+
+        mmatx = np.zeros((6,6))
+        mmatx[0, [0,3]] = [ 140, 70]
+        mmatx[1, [1,2,4,5]] = [ 156,  22*L,  54,  -13*L]
+        mmatx[2, [1,2,4,5]] = [ 22*L, 4*L**2,  13*L,  -3*L**2]
+        mmatx[3, [0,3]] = [70, 140]
+        mmatx[4, [1,2,4,5]] = [54, 13*L, 156,  -22*L]
+        mmatx[5, [1,2,4,5]] = [-13*L, -3*L**2, -22*L, 4*L**2]
+        return pA*L/420 * mmatx
+
 
     
     def init_element(self):
         self.stiff = self.rmatx().T @ self.kmatx() @ self.rmatx()
+        self.mass = self.rmatx().T @ self.mmatx() @ self.rmatx()
         self.loads = np.zeros(6)
 
     def add_loadss(self, qui, qvi, quj, qvj):

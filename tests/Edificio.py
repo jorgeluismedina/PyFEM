@@ -1,5 +1,4 @@
 
-
 import sys
 import os
 # Añadir el directorio raíz del proyecto al sys.path
@@ -17,21 +16,23 @@ from pyfem.plotting import print_matrix, plot_2dmodel
 from pyfem.solvers import solve_linear_static, vibration_modes
 
 # Materiales
-steel = Material(elast=2.0e8, poiss=0.2, dense=7850) #[KN/m2] [] [Kg/m3]
+# Para problemas en dinamica el modulo de elasticidad tiene que estar en [N/m2]
+steel = Material(elast=210e9, poiss=0.2, dense=7850) #[KN/m2] [] [Kg/m3]
 materials = [steel]
 
 # Secciones
-sect1 = FrameSection(xarea=0.001149, inrt3=8.358e-5) #[m2]
+a = 0.2
+b = 0.5
+sect1 = FrameSection(xarea=0.0062, inrt3=0.00013) #[m2]
 sections = [sect1]
 
-mod = Model(ndofn=2)
+mod = Model(ndofn=3)
 mod.add_materials(materials)
 mod.add_sections(sections)
 
 nodos = []
-elements = []
 # LECTURA DE DATOS
-with open(r'D:\ProyectosPy\PyFEM\tests\Torre_mesh.msh', 'r') as file:
+with open(r'D:\ProyectosPy\PyFEM\tests\Torre_vib.msh', 'r') as file:
     lines = file.readlines()
 
 part_coordinates = False
@@ -65,7 +66,7 @@ for line in lines:
         tag = int(data[0])-1
         ni = int(data[1])-1
         nj = int(data[2])-1
-        mod.add_element(tag, [ni, nj], sect1, steel, 'Truss2D')
+        mod.add_element(tag, [ni, nj], sect1, steel, 'Frame22D')
         #elements.append([tag, ni, nj])
         
 
@@ -74,41 +75,25 @@ for line in lines:
 #    tag, ni, nj = element
 #    mod.add_element(tag, [ni, nj], sect1, steel, 'Truss2D')
 
-mod.add_node_restraint(0, [1, 1])
-mod.add_node_restraint(5, [1, 1])
+mod.add_node_restraint(20, [1, 1, 1])
+mod.add_node_restraint(21, [1, 1, 1])
+#mod.add_node_restraint(109, [1, 1, 1])
+#mod.add_node_restraint(111, [1, 1, 1])
+#mod.add_node_restraint(113, [1, 1, 1])
+#mod.add_node_restraint(115, [1, 1, 1])
+#mod.add_node_restraint(116, [1, 1, 1])
 
-mod.add_node_load(91, [-100.0, 0.0]) #KN
+mod.add_node_load(14, [-100.0, 0.0, 0.0]) #KN
 
-print(mod.elems[0].section.xarea)
+#print(mod.elems[0].mmatx())
+#print(mod.elems[0].kmatx())
+print(mod.assemb_global_stiff())
+print(mod.assemb_global_mass())
 #SOLUCION
 
 fk, Phi = vibration_modes(mod)
 print('Frecuencias')
 print(fk)
 
-
-'''
-glob_disps, reactions = solve_linear_static(mod)
-
-
-
-
-
-print('Desplazamientos')
-print_matrix(glob_disps*1000, 2, floatfmt=".3e")
-
-print('Reacciones')
-print_matrix(reactions, 2, floatfmt=".3e")
-
-mod.calculate_forces(glob_disps)
-#print('Fuerzas internas')
-#print([elem.force for elem in mod.elems])
-print(len(mod.elems))
-print(mod.assemb_global_mass())
-
-#plt.spy(mod.assemb_global_mass())
-
 #fig = plot_2dmodel(mod)
-plt.show()
-'''
-
+#plt.show()

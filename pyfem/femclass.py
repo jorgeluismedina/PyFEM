@@ -18,6 +18,7 @@ class Model():
     def __init__(self, ndofn):
         self.ndofn = ndofn 
         self.elems = []
+        self.nelem = None
 
         self.fixd_nodes = []
         self.restraints = []
@@ -66,6 +67,7 @@ class Model():
     def add_elem_load(self, tag, loads):
         self.loaded_elems.append(tag)
         self.elems[tag].add_loadss(*loads)
+
 
     def clear_elements(self):
         self.elems.clear()
