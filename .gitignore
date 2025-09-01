@@ -17,5 +17,8 @@
 # Vscode
 .vscode/
 
+# Pickle
+*.pkl
+
 #gifs
 *.gif
