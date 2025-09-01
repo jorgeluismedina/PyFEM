@@ -40,16 +40,7 @@ def solve_linear_static(model): #estatic
 
     return glob_disps, glob_react
 
-def vibration_modes(model):
-
-    model.set_restraints()
-    #fixd_dof = model.fixd_dof
-    free_dof = model.free_dof
-    K = model.assemb_global_stiff()
-    M = model.assemb_global_mass()
-    Kff = K[np.ix_(free_dof, free_dof)]
-    Mff = M[np.ix_(free_dof, free_dof)]
-
+def vibration_modes(Kff, Mff):
     # Calculo de los autovectores y autovalores
     w2, Phi = sp.linalg.eig(Kff, Mff)
 
@@ -62,32 +53,46 @@ def vibration_modes(model):
     wk = np.sqrt(np.real(w2))
     fk = wk/2/np.pi # [Hz]
 
-    return fk, Phi
+    return fk, wk, Phi
  
 #'''
-def finite_differences(model, t0, tf, dt, x0, v0, a0):
+def finite_differences(model, tspan, F, dt):
+    # Matrices del sistema
+    model.set_restraints()
+    free_dof = model.free_dof
+    M0 = model.assemb_global_mass()
+    K0 = model.assemb_global_stiff()
+    F0 = model.assemb_global_loads()
+    K = K0[np.ix_(free_dof, free_dof)]
+    M = M0[np.ix_(free_dof, free_dof)]
+    #F = F0[free_dof]
+    fk, wk, Phi = vibration_modes(K, M)
+    wki = wk[0];  zti = 0.01
+    wkj = wk[1];  ztj = 0.01
 
-    sol = []
-    nsteps = (tf - t0) / dt
+    alpha = np.linalg.solve([[1/(2*wki), wki/2], 
+                             [1/(2*wkj), wkj/2]], [zti, ztj])
+    C = alpha[0]*M + alpha[1]*K
+    
+    # Iteraciones
+    dt2 = dt*dt
+    nsteps = int(tspan / dt) 
+    #aux = F - C@v0 - K@x0 # velocidad y desplazamiento inicial = 0
+    a0 = sp.linalg.solve(M, F[0][free_dof], assume_a='sym') # F <-- aux
+    x_back = a0 * dt2 / 2 #- dt*v0 + x0
+    x_cent = np.zeros(len(free_dof))
+    sol = [x_cent]
 
-    M = model.assemb_global_mass()
-    K = model.assemb_global_stiff()
-    F = model.assemb_global_loads()
-    C = M + K
+    for step in range(nsteps):
+        MC = M / (dt2) + C / (2*dt)
+        aux = F[step][free_dof] - (K - 2/dt2 * M) @ x_cent - (M/dt2 - C*(2*dt)) @ x_back
+        x_ford = sp.linalg.solve(MC, aux)
+        sol.append(x_ford)
+        x_back = x_cent
+        x_cent = x_ford
 
-    aux = F - C@v0 - K@x0
-    a0 = sp.linalg.solve(M, aux, assume_a='sym')
-    x_back = dt*dt*a0 / 2 - dt*v0 + x0
-    x_cent = np.zeros_like(x0)
-
-    for ti in range(nsteps):
-        MC = M / (dt*dt) + C / (2*dt)
-        aux2 = F - K
-        x_ford = sp.linal.solve(MC, F)
-
-
-    #v = x0
-    #a
+    t = np.linspace(0, tspan, nsteps)
+    return t, sol
 
 #'''
 
