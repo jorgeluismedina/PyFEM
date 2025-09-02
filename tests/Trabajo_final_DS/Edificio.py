@@ -18,12 +18,12 @@ from pyfem.solvers import solve_linear_static, vibration_modes, finite_differenc
 
 # Materiales
 # Para problemas en dinamica el modulo de elasticidad tiene que estar en [N/m2]
-steel = Material(elast=2.57e10, poiss=0.2, dense=2500) #[KN/m2] [] [Kg/m3]
+steel = Material(elast=2.57e10, poiss=0.2, dense=2500) #[N/m2] [] [Kg/m3]
 materials = [steel]
 
 # Secciones
 a = 0.2
-b = 0.7
+b = 0.8
 sect1 = FrameSection(xarea=a*b, inrt3=a*b**3/12) #[m2]
 sections = [sect1]
 
@@ -97,28 +97,32 @@ M = mod.assemb_global_mass()[np.ix_(mod.free_dof, mod.free_dof)] #[Kg]
 
 #SOLUCION
 fk, wk, Phi = vibration_modes(K, M)
-print('Frecuencia fundamental: {0:.4f} Hz'.format(fk[0]))
+print('Frecuencia Modo 1: {0:.4f} Hz'.format(fk[0]))
+print('Frecuencia Modo 2: {0:.4f} Hz'.format(fk[1]))
+print('Frecuencia Modo 3: {0:.4f} Hz'.format(fk[2]))
 
 #-------------------------------------------------------------------
 # Espectros
-def generar_espectro(w, wg, xig):
+def generar_espectro(wg, xig):
+    w = np.linspace(0.1, 10*2*np.pi, 200)
     S0 = 0.03*xig / (np.pi*wg * (4 * xig**2 + 1))
     aux = 4 * wg**2 * xig**2 * w**2
-    return S0 * (wg**4 + aux) / ((w**2-wg**2)**2 + aux)
+    S = S0 * (wg**4 + aux) / ((w**2-wg**2)**2 + aux)
+    return S, w
 
-w = np.linspace(0.1, 10*2*np.pi, 200)
-S_soft = generar_espectro(w, 2.4*np.pi, 0.85)
-S_stif = generar_espectro(w, 5.0*np.pi, 0.60)
-
-#fig1 = plt.figure()
-#plt.plot(w/(2*np.pi), S_stif/(4*np.pi**2), 'b', label='stiff soil')
-#plt.plot(w/(2*np.pi), S_soft/(4*np.pi**2), 'g', label='soft soil')
-#plt.xlim(0,10)
-#plt.legend()
+#S_soft, w = generar_espectro(2.4*np.pi, 0.85) #Azul
+#S_stif, w = generar_espectro(5.0*np.pi, 0.60) #Rojo
 
 #------------------------------------------------------------------------
 # Generar aceleraciones
-def generar_aceleracion(S, w, t):
+def generar_aceleracion(wg, xig, tspan, dt):
+    # espectro
+    w = np.linspace(0.1, 10*2*np.pi, 200)
+    S0 = 0.03*xig / (np.pi*wg * (4 * xig**2 + 1))
+    aux = 4 * wg**2 * xig**2 * w**2
+    S = S0 * (wg**4 + aux) / ((w**2-wg**2)**2 + aux)
+
+    t = np.arange(0, tspan, dt)
     Nw = len(w) #intervalos de frecuencia
     dw = w[1]-w[0]
     phi = np.random.uniform(0, 2*np.pi, Nw) 
@@ -126,53 +130,58 @@ def generar_aceleracion(S, w, t):
     acc = np.zeros_like(t)
     for j in range(Nw):
         acc += A[j] * np.cos(w[j] * t + phi[j])
-
     return acc
 
+acc1 = 9.81*generar_aceleracion(5.0*np.pi, 0.60, tspan=20, dt=0.01) # Stiff rojo
+acc2 = 9.81*generar_aceleracion(2.4*np.pi, 0.85, tspan=25, dt=0.01) # Soft azul
 
-tspan_before = 5
-tspan_sismo = 25 #[s]
-tspan_after = 25
-t_total = tspan_before + tspan_sismo + tspan_after
-dt = 0.01
-N_antes = int(tspan_before / dt)
-N_sismo = int(tspan_sismo / dt)
-N_after = int(tspan_after / dt)
-#N_total = int(len(t_total))
-tb = np.linspace(0, tspan_before, N_antes, endpoint=False)
-ts = np.linspace(tspan_before, tspan_before+tspan_sismo, N_sismo, endpoint=False)
-ta = np.linspace(tspan_before+tspan_sismo, t_total, N_after, endpoint=False)
-ttot = np.hstack([tb, ts, ta])
-start_sism_idx = tb.shape[0]-1
-end_sism_idx = start_sism_idx + ts.shape[0]-1
-print('sism start idx: {0}'.format(start_sism_idx))
-print('sism end idx: {0}'.format(end_sism_idx))
+print(acc1.shape)
+print(acc2.shape)
+print((np.arange(0, 50, 0.01)).shape)
 
-ag1 = 9.81 * generar_aceleracion(S_stif, w, ts)
-ag2 = 9.81 * generar_aceleracion(S_soft, w, ts)
 
-agtot = np.hstack([np.zeros(N_antes), 
-                   ag1, 
-                   np.zeros(int(tspan_after/(dt)))])
+def generate_signal(acc, tspan, dt, t_start): 
+    t = np.arange(0, tspan, dt)
+    ag = np.zeros_like(t)
+    idx_start = int(t_start / dt)
+    idx_end = idx_start + acc.shape[0]
+    ag[idx_start:idx_end] = acc
+    return ag, t, idx_start, idx_end
 
-#fig2 = plt.figure()
-#plt.plot(t, ag1, 'b', label='stiff soil')
-#plt.plot(ttot, agtot, 'r', label='soft soil')
-#plt.legend()
+ag1, t, i_start1, i_end1 = generate_signal(acc1, tspan=50, dt=0.01, t_start=5) # Stiff rojo
+ag2, t, i_start2, i_end2 = generate_signal(acc2, tspan=50, dt=0.01, t_start=5) # Soft azul
+print(i_start1, i_end1)
+print(i_start2, i_end2)
+print(t[i_start1], t[i_end1])
+print(t[i_start2], t[i_end2])
+
+
+fig2 = plt.figure()
+plt.plot(t, ag1, 'r', label='stiff soil')
+plt.plot(t, ag2, 'b', label='soft soil')
+plt.legend()
+plt.show()
 
 #------------------------------------------------------------------------------
-# Creacion de la matriz de fuerzas
-nsteps = agtot.shape[0]
-A = np.zeros(mod.ndofs)
-F = np.zeros((nsteps, len(mod.free_dof)))
-Mglob = mod.assemb_global_mass()
-xdofs = mod.all_dof[0::3]
-for step in range(nsteps):
-    A[xdofs] = agtot[step] 
-    Fglob = Mglob @ A
-    f = Fglob[mod.free_dof]
-    f[np.abs(f)<1e-6] = 0.0
-    F[step] = f
+# Creacion del vector de fuerzas
+
+def seismic_force(model, ag):
+    Mglob = model.assemb_global_mass()
+    xdofs = model.all_dof[0::3]
+    A = np.zeros(model.ndofs)
+    nsteps = ag.shape[0]
+    F = np.zeros((nsteps, len(model.free_dof)))
+
+    for step in range(nsteps):
+        A[xdofs] = ag[step] 
+        Fglob = Mglob @ A
+        f = Fglob[model.free_dof]
+        f[np.abs(f)<1e-6] = 0.0
+        F[step] = f
+    return F
+
+F1 = seismic_force(mod, ag1)
+F2 = seismic_force(mod, ag2)
 
 
 #--------------------------------------------------------------------------------
@@ -190,110 +199,82 @@ print('alpha1: {0:.4f} s'.format(alpha[1]))
 
 #------------------------------------------------------------------------------------
 # Newmark
-gamma = 0.5
-beta = 0.25
 
-nfreedof = len(mod.free_dof)
-disp = np.zeros((nsteps, nfreedof))
-velo = np.zeros((nsteps, nfreedof))
-acce = np.zeros((nsteps, nfreedof))
+def Newmark(F, K, M, C, free_dof, ndofs, dt=0.01):
 
-glob_disp = np.zeros((nsteps, mod.ndofs))
-glob_velo = np.zeros((nsteps, mod.ndofs))
-glob_acce = np.zeros((nsteps, mod.ndofs))
+    gamma = 0.5
+    beta = 0.25
 
-F0 = F[0]
-acce0 = sp.linalg.solve(M, F[0], assume_a='sym')
+    nsteps = F.shape[0]
+    nfreedof = len(free_dof)
+    disp = np.zeros((nsteps, nfreedof))
+    velo = np.zeros((nsteps, nfreedof))
+    acce = np.zeros((nsteps, nfreedof))
 
-# Constantes
-a0 = 1 / (beta * dt ** 2)
-a1 = gamma / (beta * dt)
-a2 = 1 / (beta * dt)
-a3 = 1 / (2 * beta) - 1
-a4 = gamma / beta - 1
-a5 = (dt / 2) * (gamma / beta - 2)
+    glob_disp = np.zeros((nsteps, ndofs))
+    glob_velo = np.zeros((nsteps, ndofs))
+    glob_acce = np.zeros((nsteps, ndofs))
 
-K_eff = K + a0 * M + a1 * C
-chol = cho_factor(K_eff)
+    acce[0] = sp.linalg.solve(M, F[0], assume_a='sym')
 
-for step in range(nsteps-1):
-    F_eff = (F[step+1]
-             + M @ (a0 * disp[step] + a2 * velo[step] + a3 * acce[step])
-             + C @ (a1 * disp[step] + a4 * velo[step] + a5 * acce[step]))
+    # Constantes
+    a0 = 1 / (beta * dt ** 2)
+    a1 = gamma / (beta * dt)
+    a2 = 1 / (beta * dt)
+    a3 = 1 / (2 * beta) - 1
+    a4 = gamma / beta - 1
+    a5 = (dt / 2) * (gamma / beta - 2)
+
+    K_eff = K + a0 * M + a1 * C
+    chol = cho_factor(K_eff)
+
     
-    disp[step+1] = cho_solve(chol, F_eff)
-    acce[step+1] = (a0 * (disp[step+1] - disp[step])
-                              - a2 * velo[step] - a3 * acce[step])
-    velo[step+1] = (velo[step]
-                              + (1 - gamma) * dt * acce[step]
-                              + gamma * dt * acce[step+1])
-    
+    for step in range(nsteps-1):
+        F_eff = (F[step+1]
+                + M @ (a0 * disp[step] + a2 * velo[step] + a3 * acce[step])
+                + C @ (a1 * disp[step] + a4 * velo[step] + a5 * acce[step]))
+        
+        disp[step+1] = cho_solve(chol, F_eff)
+        acce[step+1] = (a0 * (disp[step+1] - disp[step])
+                                - a2 * velo[step] - a3 * acce[step])
+        velo[step+1] = (velo[step]
+                                + (1 - gamma) * dt * acce[step]
+                                + gamma * dt * acce[step+1])
+        
 
-glob_disp[:, mod.free_dof] = disp
-glob_velo[:, mod.free_dof] = velo
-glob_acce[:, mod.free_dof] = acce
+    glob_disp[:, free_dof] = disp
+    glob_velo[:, free_dof] = velo
+    glob_acce[:, free_dof] = acce
 
+    return glob_disp, glob_velo, glob_acce
+
+glob_disp1, glob_velo1, glob_acce1 = Newmark(F1, K, M, C, mod.free_dof, mod.ndofs) # Stiff rojo
+glob_disp2, glob_velo2, glob_acce2 = Newmark(F2, K, M, C, mod.free_dof, mod.ndofs) # Soft azul
+
+print('numero de elementos: {0}'.format(len(mod.elems)))
+print('numero de nodos: {0}'.format(len(mod.coord)))
+
+#'''
 root = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
-ruta_pickle1 = os.path.join(root, "Trabajo_final_DS", "matrices.pkl")
-ruta_pickle2 = os.path.join(root, "Trabajo_final_DS", "resultados.pkl")
+ruta_pickle1 = os.path.join(root, "Trabajo_final_DS", "sismos.pkl")
+ruta_pickle2 = os.path.join(root, "Trabajo_final_DS", "matrices.pkl")
+ruta_pickle3 = os.path.join(root, "Trabajo_final_DS", "resultados1.pkl")
+ruta_pickle4 = os.path.join(root, "Trabajo_final_DS", "resultados2.pkl")
+
+sismos = (ag1, ag2)
+with open(ruta_pickle1, "wb") as f:
+    pickle.dump(sismos, f)
 
 matrices = (wk, Phi, M, K, C)
-with open(ruta_pickle1, "wb") as f:
+with open(ruta_pickle2, "wb") as f:
     pickle.dump(matrices, f)
 
-resultados = (ttot, glob_disp, glob_velo, glob_acce)
-with open(ruta_pickle2, "wb") as f:
-    pickle.dump(resultados, f)
+resultados1 = (t, glob_disp1, glob_velo1, glob_acce1)
+with open(ruta_pickle3, "wb") as f:
+    pickle.dump(resultados1, f)
 
-    
+resultados2 = (t, glob_disp2, glob_velo2, glob_acce2)
+with open(ruta_pickle4, "wb") as f:
+    pickle.dump(resultados2, f)
 
-disp_dof0 = glob_disp.T[0] # grado de libertad en la punta
-
-fig5 = plt.figure()
-plt.plot(ttot, disp_dof0, 'b', label='Desplazamiento')
-plt.xlabel('Tiempo [s]')
-plt.ylabel('Desplazamientos [m]')
-plt.legend()
-plt.grid()
-
-#---------------------------------------------------------------------------------------------
-# Analisis sismico: Derivas
-
-nodos_lado_izq = np.array([135, 126, 117, 108, 100, 92, 83, 74, 67, 60, 52, 45, 
-                           38, 28, 23, 17, 12, 7, 5, 2, 1], dtype=int)-1
-
-nodos_lado_der = np.array([143, 141, 137, 128, 120, 111, 98, 90, 84, 76, 69, 55, 
-                           51, 44, 39, 33, 25, 21, 19, 16, 15], dtype=int)-1
-
-
-dofs_li = (np.tile(nodos_lado_der[:,None]*3, 3) + np.arange(3))
-dofs_li = dofs_li.astype(int).flatten()[0::3]
-
-disp_stories = glob_disp.T[dofs_li]
-drift_stories = np.diff(disp_stories, axis=0)
-nstor = disp_stories.shape[0]
-stories = np.arange(0, nstor)
-
-
-#print(disp_stories.shape)
-#print(drift_stories.shape)
-
-#mean_drift_stories = np.mean(drift_stories, axis=-1)
-#print(mean_drift_stories)
-
-fig6 = plt.figure(figsize=(5,9))
-
-#inst = 2000
-drifts_t0 = np.zeros(nstor)
-for inst in np.arange(start_sism_idx, end_sism_idx, 100):
-    drifts_t0[1:] = drift_stories[:,inst]
-    plt.plot(np.abs(drifts_t0)*1000, stories, 
-             marker='o', ls='-', label=r'Drifts on {0:.2f}'.format(ttot[inst]))
-
-plt.xlabel('Drift [mm]')
-plt.ylabel('Stories')
-plt.yticks(stories)
-plt.ylim(0,nstor-1)
-plt.legend()
-plt.grid()
-plt.show()
+#'''
