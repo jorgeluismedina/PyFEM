@@ -12,7 +12,6 @@ class Quad4(Element):
     def __init__(self, nodes, coord, section, mater): # O que reciba un Gauss_Legendre o un Node4Shape para evitar instancias repetidas
         super().__init__(nodes, coord, section, mater)
         self.set_dof(2)
-        self.thick = self.section.thick
         #self.yield_crite = self.mater.yield_crite
         #self.const_model = self.mater.const_model
         self.shape = Node4Shape() # Que esta clase sean funciones de esta misma clase para ahorrar memoria (instancias repetidas)
@@ -69,18 +68,20 @@ class Quad4(Element):
             self.nmatx[i] = self.get_shape_mat(*point)
             self.bmatx[i], det_J[i] = self.get_strain_mat(*point)
         
-        self.dvolu = self.thick * det_J * self.quad_scheme.weights
+        self.area = np.dot(det_J, self.quad_scheme.weights)
+        self.dvolu = self.section.thick * det_J * self.quad_scheme.weights
         self.stiff = self.get_stiff_mat()
         self.bload = self.get_body_load()
 
-    def calc_stress(self, glob_disps):
+    def calculate_stress(self, glob_disps):
         #Estas partes no importa de momento
         #poins = 1/self.quad_scheme.points
         #gvals = self.shape.funcs(*poins.T).T #4x4
         #order = [0,2,3,1]
         gauss_stress = self.dmatx @ self.bmatx @ glob_disps #4x3
         #nodes_stress = gvals[order] @ gauss_stress[order] #4x3
-        return gauss_stress#, nodes_stress
+        self.gstress = gauss_stress#, nodes_stress
+        self.stress = gauss_stress #cambiar luego
     
     '''
     def update_stiff(self, delta_stress):

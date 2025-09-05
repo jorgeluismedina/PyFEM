@@ -66,3 +66,24 @@ class Node8Shape(): #MODOFICAR PARA QUE SEA ANTIHORARIO
         dN8ds = 0.50 * (-1 + rr)
         return np.array([[dN1dr, dN2dr, dN3dr, dN4dr, dN5dr, dN6dr, dN7dr, dN8dr],
                          [dN1ds, dN2ds, dN3ds, dN4ds, dN5ds, dN6ds, dN7ds, dN8ds]])
+    
+
+class ShapeTri3():
+    def funcs(self, r, s):
+        # FUNCIONES DE FORMA EN SENTIDO ANTIHORARIO
+        # COLOCAR COORDENADAS EN SENTIDO ANTIHORARIO
+        N1 = 1 - r - s
+        N2 = r
+        N3 = s
+        return np.array([N1, N2, N3])
+    
+    def deriv(self, r, s):
+        dN1dr = -1
+        dN2dr =  1
+        dN3dr =  0
+
+        dN1ds = -1
+        dN2ds =  0
+        dN3ds =  1
+        return np.array([[dN1dr, dN2dr, dN3dr],
+                         [dN1ds, dN2ds, dN3ds]])

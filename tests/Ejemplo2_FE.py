@@ -22,11 +22,9 @@ sect1 = AreaSection(thick=0.013) #[m2]
 sections = [sect1]
 
 coordinates = np.array([[0.075, 0.000],
-                        [0.075, 0.025],
                         [0.075, 0.050],
-                        [0.000, 0.000],
-                        [0.000, 0.025],
-                        [0.000, 0.050]])
+                        [0.000, 0.050],
+                        [0.000, 0.000]])
 
 # Creacion de Modelo
 mod = Model(ndofn=2)
@@ -35,17 +33,16 @@ mod.add_materials(materials)
 mod.add_sections(sections)
 
 # Añadir elementos
-mod.add_element(0, [1, 2, 5, 4], sect1, steel, 'Quad4')
-mod.add_element(1, [0, 1, 4, 3], sect1, steel, 'Quad4')
+mod.add_element(0, [0, 1, 3], sect1, steel, 'Tri3')
+mod.add_element(1, [3, 1, 2], sect1, steel, 'Tri3')
 
 # Añadir apoyos
 mod.add_node_restraint(0, [0, 1])
+mod.add_node_restraint(2, [1, 1])
 mod.add_node_restraint(3, [1, 1])
-mod.add_node_restraint(4, [1, 1])
-mod.add_node_restraint(5, [1, 1])
 
 # Cargas nodales
-mod.add_node_load(2, [0.0, -4.45]) #[KN]
+mod.add_node_load(1, [0.0, -4.45]) #[KN]
 
 #elem2 = mod.elems[1]
 #print(elem2.quad_scheme.points)
@@ -67,8 +64,7 @@ print_matrix(glob_disps*1000, 2, floatfmt=".3e")
 mod.calculate_stresses(glob_disps)
 print('Esfuerzos')
 for elem in mod.elems:
-    print(elem.gstress)
-    print(elem.area)
+    print(elem.stress)
 #'''
 
 node_stresses = mod.calculate_node_stresses()

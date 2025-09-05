@@ -124,7 +124,25 @@ class Model():
             edisp = glob_disps[elem.dof]
             elem.calculate_forces(edisp)
 
-    #def get_modes(self,):
+    def calculate_stresses(self, glob_disps):
+        for elem in self.elems:
+            edisp = glob_disps[elem.dof]
+            elem.calculate_stress(edisp)
+    
+    
+    def calculate_node_stresses(self, ):
+        areas = np.zeros(self.nnods)
+        area_stress = np.zeros((self.nnods, 3)) # [A, Asx, Asy, Asxy] de momento solo para plane stress sz=0
+        for elem in self.elems:
+            areas[elem.nodes] += elem.area
+            #print(elem.area * elem.stress)
+            area_stress[elem.nodes] += elem.area * elem.stress
+
+        return area_stress / areas[:,None]
+            
+
+
+
 
 
     def update_global_stiff(self, re_disps):
