@@ -1,11 +1,10 @@
 
-from abc import ABC, abstractmethod
 import numpy as np
      
-class Node4Shape():
+class Node4ShapeA():
     def funcs(self, r, s):
         # FUNCIONES DE FORMA EN SENTIDO ANTIHORARIO
-        # COLOCAR COORDENADAS EN SENTIDO ANTIHORARIO
+        # COLOCAR CONECTIVIDADES EN SENTIDO ANTIHORARIO
         N1 = 0.25 * (1 - r) * (1 - s)
         N2 = 0.25 * (1 + r) * (1 - s)
         N3 = 0.25 * (1 + r) * (1 + s)
@@ -22,6 +21,33 @@ class Node4Shape():
         dN2ds = 0.25 * (-1 - r)
         dN3ds = 0.25 * ( 1 + r)
         dN4ds = 0.25 * ( 1 - r)
+        return np.array([[dN1dr, dN2dr, dN3dr, dN4dr],
+                         [dN1ds, dN2ds, dN3ds, dN4ds]])
+    
+
+class Node4ShapeH():
+    def funcs(self, r, s):
+        # FUNCIONES DE FORMA EN SENTIDO HORARIO
+        # COLOCAR CONECTIVIDADES EN SENTIDO HORARIO
+        N1 = 0.25 * (1 - r) * (1 - s)
+        N2 = 0.25 * (1 - r) * (1 + s)
+        N3 = 0.25 * (1 + r) * (1 + s)
+        N4 = 0.25 * (1 + r) * (1 - s)
+        
+        return np.array([N1, N2, N3, N4])
+    
+    def deriv(self, r, s):
+        dN1dr = 0.25 * (-1 + s)
+        dN2dr = 0.25 * (-1 - s)
+        dN3dr = 0.25 * ( 1 + s)
+        dN4dr = 0.25 * ( 1 - s)
+         
+
+        dN1ds = 0.25 * (-1 + r)
+        dN2ds = 0.25 * ( 1 - r)
+        dN3ds = 0.25 * ( 1 + r)
+        dN4ds = 0.25 * (-1 - r)
+        
         return np.array([[dN1dr, dN2dr, dN3dr, dN4dr],
                          [dN1ds, dN2ds, dN3ds, dN4ds]])
 

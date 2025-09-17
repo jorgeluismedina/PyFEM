@@ -62,10 +62,16 @@ print('Desplazamientos')
 print_matrix(glob_disps*1000, 2, floatfmt=".3e")
 
 mod.calculate_stresses(glob_disps)
-print('Esfuerzos')
+print('Esfuerzos Elementos')
 for elem in mod.elems:
-    print(elem.stress)
+    print(elem.area)
+    print(elem.stress.get_cartesians())
+    print(elem.stress.get_principals())
+    print(elem.stress.get_von_mises())
 #'''
 
-node_stresses = mod.calculate_node_stresses()
-print(node_stresses)
+print('Esfuerzos Nodos')
+node_cart_stresses, node_prin_stresses, node_vs_stresses = mod.calculate_node_stresses()
+print(node_cart_stresses)
+print(node_prin_stresses)
+print(node_vs_stresses)

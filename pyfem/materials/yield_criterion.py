@@ -1,47 +1,66 @@
 
 import numpy as np
 from abc import ABC, abstractmethod
-"""
-    Calculate principal stresses from normal stresses using Mohr's circle formulas.
-
-    Args:
-    - normal_stresses (numpy.ndarray): Array of normal stresses with shape (3, n) where n is the number of integration points.
-                                        Each column contains normal stresses [sigma_x, sigma_y, tau_xy] at an integration point.
-
-    Returns:
-    - principal_stresses (numpy.ndarray): Array of principal stresses with shape (3, n) where n is the number of integration points.
-                                          Each column contains principal stresses [sigma1, sigma2, dir] at an integration point.
-    """
-def principal_stresses_mohr(normal_stresses):
-    n = normal_stresses.shape[1]
-    principal_stresses = np.zeros((3, n))
-    for i in range(n):
-        sigma_x, sigma_y, tau_xy = normal_stresses[:, i]
-
-        # Calculate principal stresses
-        sigma_avg = (sigma_x + sigma_y) / 2
-        delta_sigma = np.sqrt(((sigma_x - sigma_y) / 2)**2 + tau_xy**2)
-        sigma1 = sigma_avg + delta_sigma
-        sigma2 = sigma_avg - delta_sigma
-
-        # Calculate principal direction
-        if tau_xy != 0:
-            theta_p = np.arctan2(2 * tau_xy, sigma_x - sigma_y) / 2
-        else:
-            theta_p = 0
-
-        principal_stresses[:, i] = [sigma1, sigma2, theta_p]
-
-    return principal_stresses 
 
 
 class StressState2D():
-    def __init__(self, sx, sy, txy, sz):
+    def __init__(self, sx=0.0, sy=0.0, txy=0.0):
         self.sx = sx
         self.sy = sy
+        self.sz = 0.0
         self.txy = txy
-        self.sz = sz
-        #self.hi= 
+        self.calculate_properties()
+        
+    def calculate_properties(self):
+        self.calculate_principal()
+        self.calculate_hydrostatic()
+        self.calculate_deviatoric()
+
+    def update(self, sx=None, sy=None, txy=None):
+        if sx is not None:
+            self.sx = np.asarray(sx)
+        if sy is not None:
+            self.sy = np.asarray(sy)
+        if txy is not None:
+            self.txy = np.asarray(txy)
+        self.calculate_properties()
+        
+    
+    def calculate_principal(self):
+        smean = (self.sx + self.sy)/2
+        sdelt = np.sqrt((self.sx - self.sy)**2/4 + self.txy**2)
+        s1 = smean + sdelt
+        s2 = smean - sdelt
+        self.s1 = np.where(s1>s2, s1, s2)
+        self.s2 = np.where(s1<s2, s1, s2)
+        self.s3 = np.zeros_like(self.s1)
+        # Cálculo vectorizado del ángulo principal
+        denominator = self.sx - self.sy
+        # Evitar división por cero
+        # Para casos donde sx = sy, establecemos el ángulo en 45°
+        self.direc = np.where(
+            np.abs(denominator) > 1e-10,  # Condición para evitar división por cero
+            0.5 * np.arctan2(2 * self.txy, denominator),
+            np.pi/4)  # Valor cuando sx = sy
+    
+    def calculate_hydrostatic(self):
+        self.hidro = (self.s1 + self.s2 + self.s3)/3
+
+    def calculate_deviatoric(self):
+        self.s1_dev = self.s1 - self.hidro
+        self.s2_dev = self.s2 - self.hidro
+        self.s3_dev = self.s3 - self.hidro
+
+    def get_cartesians(self):
+        return np.array([self.sx, self.sy, self.txy])
+    
+    def get_principals(self):
+        return np.array([self.s1, self.s2, self.s3])
+    
+    def get_von_mises(self):
+        return np.sqrt(self.s1**2 - self.s1*self.s2 + self.s2**2)
+
+
 
 
 class YieldCriterion(ABC):
@@ -91,9 +110,9 @@ class YieldCriterion(ABC):
     def stress_level(self): #(effective stress)
         pass
 
-    @abstractmethod
-    def get_constants(self):
-        pass
+    #@abstractmethod
+    #def get_constants(self):
+    #    pass
 
 
 

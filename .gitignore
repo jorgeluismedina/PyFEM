@@ -22,3 +22,11 @@
 
 #gifs
 *.gif
+
+#dfx
+*.dxf
+
+#msh
+*.msh
+
+#txt y dat

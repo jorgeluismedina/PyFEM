@@ -5,14 +5,14 @@ import scipy as sp
 from pyfem.elements.base_elem import Element
 from pyfem.gauss_quad import Gauss_Legendre
 from pyfem.shape_funcs import ShapeTri3
+from pyfem.materials.yield_criterion import StressState2D
 
 
 
 #Esta clase tiene que variar para problemas axisimetricos ya que B es una matriz de (4,8)
 class Tri3(Element):
-    def __init__(self, nodes, coord, section, mater): # O que reciba un Gauss_Legendre o un Node4Shape para evitar instancias repetidas
-        super().__init__(nodes, coord, section, mater)
-        self.set_dof(2)
+    def __init__(self, conec, dof, coord, section, mater): # O que reciba un Gauss_Legendre o un Node4Shape para evitar instancias repetidas
+        super().__init__(conec, dof, coord, section, mater)
         #self.yield_crite = self.mater.yield_crite
         #self.const_model = self.mater.const_model
         self.shape = ShapeTri3() # Que esta clase sean funciones de esta misma clase para ahorrar memoria (instancias repetidas)
@@ -58,7 +58,8 @@ class Tri3(Element):
     
     def init_element(self):
         #npoin = self.quad_scheme.npoin
-        self.stress = np.zeros(3)
+        #self.stress = np.zeros(3)
+        self.stress = StressState2D()
         self.yielded = False
         # modificar
         const = self.mater.elast/(1-self.mater.poiss**2)
@@ -74,10 +75,5 @@ class Tri3(Element):
         self.bload = self.get_body_load()
 
     def calculate_stress(self, glob_disps):
-        #Estas partes no importa de momento
-        #poins = 1/self.quad_scheme.points
-        #gvals = self.shape.funcs(*poins.T).T #4x4
-        #order = [0,2,3,1]
         stress = self.dmatx @ self.bmatx @ glob_disps #4x3
-        #nodes_stress = gvals[order] @ gauss_stress[order] #4x3
-        self.stress = stress#, nodes_stress
+        self.stress.update(*stress)

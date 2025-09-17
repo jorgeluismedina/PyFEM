@@ -3,18 +3,18 @@ import numpy as np
 import scipy as sp
 from pyfem.elements.base_elem import Element
 from pyfem.gauss_quad import Gauss_Legendre
-from pyfem.shape_funcs import Node4Shape, Node8Shape
+from pyfem.shape_funcs import Node4ShapeA, Node4ShapeH
+from pyfem.materials.yield_criterion import StressState2D
 
 
 
 #Esta clase tiene que variar para problemas axisimetricos ya que B es una matriz de (4,8)
 class Quad4(Element):
-    def __init__(self, nodes, coord, section, mater): # O que reciba un Gauss_Legendre o un Node4Shape para evitar instancias repetidas
-        super().__init__(nodes, coord, section, mater)
-        self.set_dof(2)
+    def __init__(self, conec, dof, coord, section, mater): # O que reciba un Gauss_Legendre o un Node4Shape para evitar instancias repetidas
+        super().__init__(conec, dof, coord, section, mater)
         #self.yield_crite = self.mater.yield_crite
         #self.const_model = self.mater.const_model
-        self.shape = Node4Shape() # Que esta clase sean funciones de esta misma clase para ahorrar memoria (instancias repetidas)
+        self.shape = Node4ShapeH() # Que esta clase sean funciones de esta misma clase para ahorrar memoria (instancias repetidas)
         self.quad_scheme = Gauss_Legendre(2, ndim=2) # Que Gauss_Legendre solo sea una funcion para ahorrar (instancias repetidas)
         self.init_element()
     
@@ -50,7 +50,8 @@ class Quad4(Element):
 
     def init_element(self):
         npoin = self.quad_scheme.npoin
-        self.stress = np.zeros((npoin,3))
+        #self.stress = np.zeros((npoin,3))
+        self.stress = StressState2D()
         self.yielded = np.zeros(npoin, dtype=bool)
         # modificar
         const = self.mater.elast/(1-self.mater.poiss**2)
@@ -80,9 +81,13 @@ class Quad4(Element):
         #order = [0,2,3,1]
         gauss_stress = self.dmatx @ self.bmatx @ glob_disps #4x3
         #nodes_stress = gvals[order] @ gauss_stress[order] #4x3
-        self.gstress = gauss_stress#, nodes_stress
-        self.stress = gauss_stress #cambiar luego
+        #self.gstress = gauss_stress#, nodes_stress
+        #self.stress = gauss_stress #cambiar luego
+        self.stress.update(gauss_stress[:,0], 
+                           gauss_stress[:,1], 
+                           gauss_stress[:,2])
     
+
     '''
     def update_stiff(self, delta_stress):
         self.stress += delta_stress

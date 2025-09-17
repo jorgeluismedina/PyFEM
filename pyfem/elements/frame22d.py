@@ -5,9 +5,8 @@ import scipy as sp
 from .base_elem import Element
 
 class Frame22D(Element):
-    def __init__(self, nodes, coord, section, mater):
-        super().__init__(nodes, coord, section, mater)
-        self.set_dof(3)
+    def __init__(self, conec, dof, coord, section, mater):
+        super().__init__(conec, dof, coord, section, mater)
         vector = self.coord[1] - self.coord[0]
         self.length = sp.linalg.norm(vector)
         self.dirvec = vector/self.length

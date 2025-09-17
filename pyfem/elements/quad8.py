@@ -3,15 +3,14 @@ import numpy as np
 import scipy as sp
 from pyfem.elements.base_elem import Element
 from pyfem.gauss_quad import Gauss_Legendre
-from pyfem.shape_funcs import Node4Shape, Node8Shape
+from pyfem.shape_funcs import Node8Shape
 
 
 
 #Esta clase tiene que variar para problemas axisimetricos ya que B es una matriz de (4,8)
 class Quad8(Element):
-    def __init__(self, nodes, coord, section, mater): # O que reciba un Gauss_Legendre o un Node4Shape para evitar instancias repetidas
-        super().__init__(nodes, coord, section, mater)
-        self.set_dof(2)
+    def __init__(self, conec, dof, coord, section, mater): # O que reciba un Gauss_Legendre o un Node4Shape para evitar instancias repetidas
+        super().__init__(conec, dof, coord, section, mater)
         self.thick = self.section.thick
         self.yield_crite = self.mater.yield_crite
         self.const_model = self.mater.const_model
