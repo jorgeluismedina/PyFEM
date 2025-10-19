@@ -59,5 +59,5 @@ def to_gid_results(file_name: str,
             fid.write(f"{i+1:6d} {vm:13.5e}\n")
         fid.write("End Values \n\n")
 
-    print(f"Archivo escrito: {res_file}")
+    #print(f"Archivo escrito: {res_file}")
     return res_file

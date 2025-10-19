@@ -1,11 +1,11 @@
 
 import numpy as np
 import scipy as sp
-from .base_elem import Element
+from .base_elem import FrameElement
 
-class Frame2D(Element):
-    def __init__(self, conec, dof, coord, section, mater): #elast, xarea, i_mom)
-        super().__init__(conec, dof, coord, section, mater)
+class Frame2D(FrameElement):
+    def __init__(self, mater, section, coord, conec, dof): #elast, xarea, i_mom)
+        super().__init__(mater, section, coord, conec, dof)
         vector = self.coord[1] - self.coord[0]
         self.length = sp.linalg.norm(vector)
         self.dirvec = vector/self.length
@@ -43,6 +43,8 @@ class Frame2D(Element):
   
 
     def add_loads(self, fui, fvi, mi, fuj, fvj, mj): # Darle el signo de carga antes
+        #u = normal
+        #v = tangente
         c, s = self.dirvec
         # Cargas en coordenadas globales
         self.loads = np.array([fui*c + fvi*s, -fui*s + fvi*c, mi,

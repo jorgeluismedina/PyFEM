@@ -8,44 +8,52 @@ from .elements.frame22d import Frame22D
 from .elements.tri3 import Tri3
 from .elements.quad4 import Quad4
 from .elements.quad8 import Quad8
-
-
-def construct_bar1d(conec, dof, coord, section, material):
-    return Bar1D(conec, dof, coord, section, material)
-
-def construct_truss2d(conec, dof, coord, section, material):
-    return Truss2D(conec, dof, coord, section, material)
-
-def construct_truss3d(conec, dof, coord, section, material):
-    return Truss3D(conec, dof, coord, section, material)
-
-def construct_frame2d(conec, dof, coord, section, material):
-    return Frame2D(conec, dof, coord, section, material)
-
-def construct_frame22d(conec, dof, coord, section, material):
-    return Frame22D(conec, dof, coord, section, material)
-
-def construct_tri3(conec, dof, coord, section, material):
-    return Tri3(conec, dof, coord, section, material)
-
-def construct_quad4(conec, dof, coord, section, material):
-    return Quad4(conec, dof, coord, section, material)
-
-def construct_quad8(conec, dof, coord, section, material):
-    return Quad8(conec, dof, coord, section, material)
+from .elements.hex8 import Hex8
 
 
 
-
-
-def get_constructor(elem_type):
-    element_constructors = {'Bar1D': construct_bar1d,
-                            'Truss2D': construct_truss2d,
-                            'Truss3D': construct_truss3d,
-                            'Frame2D': construct_frame2d,
-                            'Frame22D': construct_frame22d,
-                            'Tri3': construct_tri3,
-                            'Quad4': construct_quad4,
-                            'Quad8': construct_quad8}
+def frame_constructor(etype, mater, section, coord, conec, dof):
+    if etype == 'Bar1D':
+        return Bar1D(mater, section, coord, conec, dof)
     
-    return element_constructors.get(elem_type)
+    elif etype == 'Truss2D':
+        return Truss2D(mater, section, coord, conec, dof)
+    
+    elif etype == 'Truss3D':
+        return Truss3D(mater, section, coord, conec, dof)
+    
+    elif etype == 'Frame2D':
+        return Frame2D(mater, section, coord, conec, dof)
+    
+    elif etype == 'Frame22D':
+        return Frame22D(mater, section, coord, conec, dof)
+    
+    else:
+        raise ValueError(f"Not supported element type: {etype}")
+
+
+    
+def area_constructor(etype, mater, section, coord, conec, dof):
+    if etype == 'Tri3':
+        return Tri3(mater, section, coord, conec, dof)
+    
+    elif etype == 'Quad4':
+        return Quad4(mater, section, coord, conec, dof)
+    
+    elif etype == 'Quad8':
+        return Quad8(mater, section, coord, conec, dof)
+    
+    else:
+        raise ValueError(f"Not supported element type: {etype}")
+
+
+
+
+def solid_constructor(etype, mater, coord, conec, dof):
+    if etype == 'Hex8':
+        return Hex8(mater, coord, conec, dof)
+    
+    else:
+        raise ValueError(f"Not supported element type: {etype}")
+
+

@@ -2,6 +2,71 @@
 import numpy as np
 from abc import ABC, abstractmethod
 
+
+
+def plane_stress(elast, poiss):
+    const = elast / (1 - poiss**2)
+    D = np.array([
+        [1,  poiss,  0],
+        [poiss,  1,   0],
+        [0,  0,   (1 - poiss)/2]
+    ]) * const
+    return D
+
+def plane_strain(elast, poiss):
+    const = elast / ((1 + poiss) * (1 - 2 * poiss))
+    D = np.array([
+        [1 - poiss,  poiss,  0],
+        [poiss,  1 - poiss,   0],
+        [0,  0,   (1 - 2*poiss)/2]
+    ]) * const
+    return D
+
+def axisymmetric(elast, poiss):
+    const = elast / ((1 + poiss) * (1 - 2 * poiss))
+    D = const * np.array([
+        [1 - poiss,  poiss,      poiss,     0],
+        [poiss,      1 - poiss,  poiss,     0],
+        [poiss,      poiss,      1 - poiss, 0],
+        [0,      0,      0,      (1 - 2*poiss)/2]
+    ]) * const
+    return D
+
+
+def elastic3D(elast, poiss):
+    lame1 = elast * poiss / (1 + poiss) / (1 - 2*poiss) #lambda
+    lame2 = 0.5 * elast / (1 + poiss) #mu
+    const = 2*lame2 + lame1
+    D = np.array([
+        [const, lame1, lame1, 0, 0, 0],
+        [lame1, const, lame1, 0, 0, 0],
+        [lame1, lame1, const, 0, 0, 0],
+        [0, 0, 0, lame2, 0, 0],
+        [0, 0, 0, 0, lame2, 0],
+        [0, 0, 0, 0, 0, lame2]
+    ])
+    return D
+
+
+
+
+_constitutive_model_ = {'plane_stress': plane_stress, 
+                        'plane_strain': plane_strain,
+                        'axisymmetric': axisymmetric,
+                        'elastic3D': elastic3D}
+
+def get_constitutive_matrix(elast, poiss, name):
+    if name not in _constitutive_model_:
+        raise ValueError(f"Constitutive law no encountered")
+    
+    return _constitutive_model_[name](elast, poiss)
+
+
+
+
+
+
+
 class ElastoPlastic2D(ABC):
     def __init__(self, material): 
         self.mater = material
@@ -27,17 +92,13 @@ class ElastoPlastic2D(ABC):
                           fmul1*avect[3] + fmult])
         return dvect
     
-    def calculate_Dp(self, elast, poiss, avect):
-        D = self.calculate_D()
-        dimen = D.shape[0]
-        dvect = self.get_flowpl(elast, poiss, avect)
-        denom = self.mater.hards + dvect@avect
-        dDdDT = np.tensordot(dvect,dvect, axes=0)[:dimen, :dimen]
-        return D - dDdDT/denom
+    
         
 
+
+
         
-    
+#'''    
 class PlaneStress(ElastoPlastic2D):
     def calculate_D(self):
         elast = self.mater.elast
@@ -55,9 +116,16 @@ class PlaneStress(ElastoPlastic2D):
         avect_sum = avect[0]+avect[1]
         return elast*poiss*(avect_sum)/(1-poiss**2)
     
-    def all_components(self, stress):
-        mod_stress = np.insert(stress, 3, 0, axis=1)
-        return mod_stress
+    #def all_components(self, stress):
+    #    mod_stress = np.insert(stress, 3, 0, axis=1)
+    #    return mod_stress
+    def calculate_Dp(self, elast, poiss, avect):
+        D = self.calculate_D()
+        dimen = D.shape[0]
+        dvect = self.get_flowpl(elast, poiss, avect)
+        denom = self.mater.hards + dvect@avect
+        dDdDT = np.tensordot(dvect,dvect, axes=0)[:dimen, :dimen]
+        return D - dDdDT/denom
         
 
 class PlaneStrain(ElastoPlastic2D):
@@ -98,6 +166,14 @@ class Axisymmetric(ElastoPlastic2D):
         avect_sum = avect[0]+avect[1]+avect[3]
         return elast*poiss*(avect_sum)/((1+poiss)*(1-2*poiss))
     
+    def calculate_Dp(self, elast, poiss, avect):
+        D = self.calculate_D()
+        dimen = D.shape[0]
+        dvect = self.get_flowpl(elast, poiss, avect)
+        denom = self.mater.hards + dvect@avect
+        dDdDT = np.tensordot(dvect,dvect, axes=0)[:dimen, :dimen]
+        return D - dDdDT/denom
+    
 
 
 
@@ -107,3 +183,5 @@ def get_const_model(problem_type):
                      'Axisymmetric': Axisymmetric}
     
     return problem_types.get(problem_type)
+
+#'''

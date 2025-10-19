@@ -14,7 +14,8 @@ from pyfem.plotting import print_matrix, plot_2dmodel
 from pyfem.solvers import solve_linear_static
 
 # Materiales
-steel = Material(elast=2.0e7, poiss=0.2, dense=1.0) #[KN/m2]
+steel = Material(elast=2.0e7, poiss=0.2, dense=1.0, 
+                 constitutive_model='plane_stress') #[KN/m2]
 materials = [steel]
 
 # Secciones
@@ -33,7 +34,7 @@ mod.add_materials(materials)
 mod.add_sections(sections)
 
 # Añadir elementos
-mod.add_element(0, [3, 1, 0, 2], sect1, steel, 'Quad4')
+mod.add_area_element('Quad4', steel, sect1, [3, 1, 0, 2])
 
 # Añadir apoyos
 mod.add_node_restraint(0, [1, 1])

@@ -2,6 +2,57 @@
 import numpy as np
 from scipy.linalg import cho_factor, cho_solve
 import scipy as sp
+from scipy.sparse.linalg import spsolve
+
+
+
+def solve_linear_static(model): # dense matrix
+
+    model.set_restraints()
+    fixd_dof = model.fixd_dof
+    free_dof = model.free_dof
+
+    glob_stiff = model.assemb_global_stiff()
+    glob_loads = model.assemb_global_loads()
+    glob_disps = model.assemb_global_disps()
+
+    # Reduccion del sistema
+    stiff_ff = glob_stiff[np.ix_(free_dof, free_dof)]
+    stiff_sf = glob_stiff[np.ix_(fixd_dof, free_dof)]
+    glob_loads -= glob_stiff[:,fixd_dof] @ glob_disps[fixd_dof] # desplazamientos impuestos -> fuerzas
+
+    # Resolucion del Sistema
+    # Cholesky solo va a funcionar cuando la matriz sea Sym-Pos-definite
+    # los nodos tienen que estar en sentido antihorario para que sea SPD
+    free_disps = cho_solve(cho_factor(stiff_ff), glob_loads[free_dof])
+    glob_disps[free_dof] = free_disps
+    glob_react = stiff_sf @ free_disps - glob_loads[fixd_dof]
+
+    return glob_disps, glob_react
+
+
+def solve_linear_static2(model): # dense matrix
+
+    model.set_restraints()
+    fixd_dof = model.fixd_dof
+    free_dof = model.free_dof
+
+    glob_stiff = model.assemb_global_stiff_sparse() # sparse
+    glob_loads = model.assemb_global_loads() # dense
+    glob_disps = model.assemb_global_disps() # dense
+
+    # Reduccion del sistema
+    stiff_ff = glob_stiff[free_dof, :][:, free_dof].tocsc() # a formato csc para resolucion
+    stiff_sf = glob_stiff[fixd_dof, :][:, free_dof]
+    glob_loads -= glob_stiff[:, fixd_dof].dot(glob_disps[fixd_dof]) # desplazamientos impuestos -> fuerzas
+
+    # Resolucion del Sistema
+    free_disps = spsolve(stiff_ff, glob_loads[free_dof])
+    glob_disps[free_dof] = free_disps
+    glob_react = stiff_sf.dot(free_disps) - glob_loads[fixd_dof]
+
+    return glob_disps, glob_react
+
 
 
 def check_symmetric(a, rtol=1e-6, atol=1e-5):
@@ -14,31 +65,6 @@ def check_conver(resid, force, tol):
     ratio = resid/force
     return ratio <= tol
 
-
-def solve_linear_static(model): #estatic
-
-    model.set_restraints()
-    fixd_dof = model.fixd_dof
-    free_dof = model.free_dof
-
-    glob_stiff = model.assemb_global_stiff()
-    glob_loads = model.assemb_global_loads()
-    #glob_loads = model.glob_loads
-    glob_disps = model.glob_disps
-
-    # Reduccion del sistema
-    stiff_ff = glob_stiff[np.ix_(free_dof, free_dof)]
-    stiff_sf = glob_stiff[np.ix_(fixd_dof, free_dof)]
-    glob_loads -= glob_stiff[:,fixd_dof] @ glob_disps[fixd_dof] # desplazamientos impuestos -> fuerzas
-
-    # Resolucion del Sistema
-    #if check_symmetric(stiff_ff):
-    #free_disps = sp.linalg.solve(stiff_ff, glob_loads[free_dof], assume_a = 'sym')
-    free_disps = cho_solve(cho_factor(stiff_ff), glob_loads[free_dof])
-    glob_disps[free_dof] = free_disps
-    glob_react = stiff_sf @ free_disps - glob_loads[fixd_dof]
-
-    return glob_disps, glob_react
 
 def vibration_modes(Kff, Mff):
     # Calculo de los autovectores y autovalores

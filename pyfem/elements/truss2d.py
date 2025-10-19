@@ -1,11 +1,11 @@
 
 import numpy as np
 import scipy as sp
-from .base_elem import Element
+from .base_elem import FrameElement
 
-class Truss2D(Element):
-    def __init__(self, conec, dof, coord, section, mater):
-        super().__init__(conec, dof, coord, section, mater)
+class Truss2D(FrameElement):
+    def __init__(self, mater, section, coord, conec, dof):
+        super().__init__(mater, section, coord, conec, dof)
         vector = self.coord[1] - self.coord[0]
         self.length = sp.linalg.norm(vector)
         self.dirvec = vector/self.length

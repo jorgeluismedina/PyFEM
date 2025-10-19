@@ -1,11 +1,11 @@
 
 import numpy as np
 import scipy as sp
-from pyfem.elements.base_elem import Element
+from pyfem.elements.base_elem import FrameElement
 
-class Bar1D(Element):
-    def __init__(self, conec, dof, coord, section, mater): #mater= [E, nu, sy, Hp, dens]
-        super().__init__(conec, dof, coord, section, mater)
+class Bar1D(FrameElement):
+    def __init__(self, mater, section, coord, conec, dof): #mater= [E, nu, sy, Hp, dens]
+        super().__init__(mater, section, coord, conec, dof)
         self.elast = self.mater.elast
         self.length = np.abs(self.coord[1] - self.coord[0])
         self.stress = 0.0

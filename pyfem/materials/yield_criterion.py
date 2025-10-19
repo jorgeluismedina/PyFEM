@@ -29,10 +29,8 @@ class StressState2D():
     def calculate_principal(self):
         smean = (self.sx + self.sy)/2
         sdelt = np.sqrt((self.sx - self.sy)**2/4 + self.txy**2)
-        s1 = smean + sdelt
-        s2 = smean - sdelt
-        self.s1 = np.where(s1>s2, s1, s2)
-        self.s2 = np.where(s1<s2, s1, s2)
+        self.s1 = smean + sdelt
+        self.s2 = smean - sdelt
         self.s3 = np.zeros_like(self.s1)
         # Cálculo vectorizado del ángulo principal
         denominator = self.sx - self.sy

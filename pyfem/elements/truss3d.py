@@ -1,11 +1,11 @@
 
 import numpy as np
 import scipy as sp
-from .base_elem import Element
+from .base_elem import FrameElement
 
-class Truss3D(Element):
-    def __init__(self, conec, dof, coord, section, mater): #elast, xarea, i_mom)
-        super().__init__(conec, dof, coord, section, mater)
+class Truss3D(FrameElement):
+    def __init__(self, mater, section, coord, conec, dof): #elast, xarea, i_mom)
+        super().__init__(mater, section, coord, conec, dof)
         vector = self.coord[1] - self.coord[0]
         self.length = sp.linalg.norm(vector)
         self.dirvec = vector/self.length
@@ -19,6 +19,7 @@ class Truss3D(Element):
         cxy = cx*cy
         cxz = cx*cz
         cyz = cy*cz
+        
         EA_L = self.mater.elast * self.section.xarea / self.length
         self.stiff = EA_L * np.array([[cx2, cxy, cxz, -cx2, -cxy, -cxz],
                                       [cxy, cy2, cyz, -cxy, -cy2, -cyz],

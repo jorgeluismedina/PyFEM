@@ -1,9 +1,11 @@
 
 import numpy as np
 import scipy as sp
-from scipy.sparse import coo_matrix
+from scipy.sparse import coo_matrix, csr_matrix, csc_matrix
+from scipy.sparse.linalg import spsolve
+from scipy import sparse
 from .nodeclass import Node
-from .constructors import get_constructor
+from .constructors import frame_constructor, area_constructor, solid_constructor
 
 
 '''
@@ -22,17 +24,27 @@ class Model():
         self.elems = []
         #self.nelem = None
 
-        self.fixd_nodes = []
-        self.restraints = []
-        self.nodal_loads = []
-        self.loaded_nodes = []
-        self.loaded_elems = []
+        self.fixd_nodes = [] #tags
+        self.restraints = [] #values
+
+        self.loaded_nodes = [] #tags
+        self.nodal_loads = [] #values
+
+        self.imposed_disp_nodes = [] #tags
+        self.imposed_disps = [] #values
+
+        self.loaded_elems = [] #tags
 
     def add_materials(self, materials): # Son necesarios ahora?
         self.mater = materials
 
     def add_sections(self, sections): # Son necesarios ahora?
         self.sections = sections
+
+    def assemb_global_vec(self, node_tag, values):
+        dof = self.all_nodof[node_tag].flatten()
+        vals = np.array(values).flatten()
+        return dof, vals
 
     # NODOS
     # Añadir todo uno por uno? los nodos creo que no
@@ -56,9 +68,6 @@ class Model():
         self.ndofs = self.ndofn * self.nnods
         self.all_dof = np.arange(self.ndofs, dtype=int)
         self.all_nodof = np.reshape(self.all_dof, (self.nnods, self.ndofn))
-        # ver si quitarlos y que se obtengan con un return
-        self.glob_disps = np.zeros(self.ndofs)
-        self.glob_loads = np.zeros(self.ndofs)
 
     def add_node_restraint(self, tag, restraints):
         self.fixd_nodes.append(tag)
@@ -73,29 +82,31 @@ class Model():
         self.loaded_nodes.append(tag)
         self.nodal_loads.append(loads)
 
-    # ELEMENTOS
-    def add_element(self, tag, conec, section, material, etype):
-        constructor = get_constructor(etype)
-        if constructor is None:
-            raise ValueError(f"Not supported element type: {etype}")
-        
-        conec = np.array(conec)
-        dof   = self.all_nodof[conec].flatten()
+
+    def add_frame_element(self, etype, material, section, conec):
         coord = self.coord[conec]
-        self.elems.append(constructor(conec, dof, coord, section, material))
+        dof   = self.all_nodof[conec].ravel()
+        self.elems.append(frame_constructor(etype, material, section, coord, conec, dof))
+
+    def add_area_element(self, etype, material, section, conec):
+        coord = self.coord[conec]
+        dof   = self.all_nodof[conec].ravel()
+        self.elems.append(area_constructor(etype, material, section, coord, conec, dof))
+
+    def add_solid_element(self, etype, material, conec):
+        coord = self.coord[conec]
+        dof   = self.all_nodof[conec].ravel()
+        self.elems.append(solid_constructor(etype, material, coord, conec, dof))
+
+        
 
     def add_elem_load(self, elem_tag, loads):
         self.loaded_elems.append(elem_tag)
-        self.elems[elem_tag].add_loadss(*loads)
+        #self.elems[elem_tag].add_loadss(*loads)
+        self.elems[elem_tag].add_loads(*loads)
 
     def clear_elements(self):
         self.elems.clear()
-    
-    # FUNCIONES
-    def assemb_global_vec(self, node_tag, values):
-        dof = self.all_nodof[node_tag].flatten()
-        vals = np.array(values).flatten()
-        return dof, vals
           
     
     def assemb_global_loads(self):
@@ -111,11 +122,20 @@ class Model():
             
         return glob_loads
     
-    def impose_displacements(self, node_tag, imp_disps):
-        dofs, vals = self.assemb_global_vec(node_tag, imp_disps)
-        self.glob_disps[dofs] = vals
+    
+    def add_node_disp(self, tag, imposed_disps): 
+        self.imposed_disp_nodes.append(tag)
+        self.imposed_disps.append(imposed_disps)
 
-    #Adaptar para sparse matrix (ensamblar la matriz global a partir de elem.dof_row y elem.dof_col)
+    def assemb_global_disps(self):
+        glob_disps = np.zeros(self.ndofs)
+
+        if self.imposed_disp_nodes:
+            dofs, vals = self.assemb_global_vec(self.imposed_disp_nodes, self.imposed_disps)
+            glob_disps[dofs] = vals
+
+        return glob_disps
+
     def assemb_global_stiff(self):
         glob_stiff = np.zeros((self.ndofs, self.ndofs))
         for elem in self.elems:
@@ -129,6 +149,32 @@ class Model():
             glob_mass[np.ix_(elem.dof, elem.dof)] += elem.mass 
 
         return glob_mass
+    
+    
+    def assemb_global_stiff_sparse(self):
+        rows = []
+        cols = []
+        vals = []
+
+        for elem in self.elems:
+            dof = elem.dof
+            n = dof.size
+            stiff = elem.stiff
+            rows.append(np.repeat(dof, n))
+            cols.append(np.tile(dof, n))
+            vals.append(stiff.ravel())
+        
+        rows = np.concatenate(rows)
+        cols = np.concatenate(cols)
+        vals = np.concatenate(vals)
+
+        glob_stiff = coo_matrix((vals, (rows, cols)), shape=(self.ndofs, self.ndofs)).tocsr()
+        return glob_stiff
+
+
+        
+
+    
     
     def calculate_forces(self, glob_disps):
         for elem in self.elems:

@@ -22,10 +22,14 @@ materials = [steel]
 sect1 = AreaSection(thick=0.013) #[m2]
 sections = [sect1]
 
-coordinates = np.array([[0.075, 0.000],
-                        [0.075, 0.050],
-                        [0.000, 0.050],
-                        [0.000, 0.000]])
+coordinates = np.array([[0.0, 0.0],
+                        [0.0, 1.5],
+                        [1.5, 0.0],
+                        [1.5, 1.5],
+                        [3.0, 0.0],
+                        [3.0, 1.5],
+                        [4.5, 0.0],
+                        [4.5, 1.5]])
 
 # Creacion de Modelo
 mod = Model(ndofn=2)
@@ -34,27 +38,26 @@ mod.add_materials(materials)
 mod.add_sections(sections)
 
 # Añadir elementos
-mod.add_area_element('Tri3', steel, sect1, [0, 1, 3])
-mod.add_area_element('Tri3', steel, sect1, [3, 1, 2])
+mod.add_area_element('Tri3', steel, sect1, [0, 2, 1])
+mod.add_area_element('Tri3', steel, sect1, [1, 2, 3])
+mod.add_area_element('Tri3', steel, sect1, [2, 4, 3])
+mod.add_area_element('Tri3', steel, sect1, [3, 4, 5])
+mod.add_area_element('Tri3', steel, sect1, [4, 6, 5])
+mod.add_area_element('Tri3', steel, sect1, [5, 6, 7])
 
 # Añadir apoyos
-mod.add_node_restraint(0, [0, 1])
-mod.add_node_restraint(2, [1, 1])
-mod.add_node_restraint(3, [1, 1])
+mod.add_node_restraint(0, [1, 1])
+mod.add_node_restraint(1, [1, 1])
 
-# Cargas nodales
-mod.add_node_load(1, [0.0, -4.45]) #[KN]
+# Cargas distribuidas
+mod.add_elem_load(1, [[0,0,1], [0,0,0]]) #carga en el tercer lado
+mod.add_elem_load(3, [[0,0,1], [0,0,0]])
+mod.add_elem_load(5, [[0,0,1], [0,0,0]])
 
-#elem2 = mod.elems[1]
-#print(elem2.quad_scheme.points)
-#print(elem2.coord)
-#print_matrix(elem2.stiff, 2, floatfmt=".3e")
+print(mod.elems[1].loads)
+print(mod.assemb_global_loads())
 
 #'''
-mod.set_restraints()
-Kglob = mod.assemb_global_stiff()
-print_matrix(mod.assemb_global_stiff(), 2, floatfmt=".3e")
-#print_matrix(Kglob[np.ix_(mod.free_dof, mod.free_dof)], 2, floatfmt=".3e")
 
 # Solucion
 glob_disps, reactions = solve_linear_static(mod)
