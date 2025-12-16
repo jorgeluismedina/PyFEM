@@ -3,15 +3,11 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 class Element():
-    # def __init__(self, conec, dof, coord, mater):
-    def __init__(self, mater, coord, conec, dof): # el atributo conec no lo uso para nada
+    def __init__(self, mater, coord, conec, dof):
         self.mater = mater
         self.coord = coord
         self.conec = conec
         self.dof = dof
-        #self.conec = conec
-        #self.section = section
-        #self.nnods = conec.shape[0]
         self.loads = None
         
     #@abstractmethod

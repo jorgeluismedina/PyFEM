@@ -104,9 +104,6 @@ class Model():
         self.loaded_elems.append(elem_tag)
         #self.elems[elem_tag].add_loadss(*loads)
         self.elems[elem_tag].add_loads(*loads)
-
-    def clear_elements(self):
-        self.elems.clear()
           
     
     def assemb_global_loads(self):

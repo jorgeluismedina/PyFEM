@@ -18,7 +18,11 @@ pts : (ndarray) : Points for the Gauss-Legendre quadrature.
 """
 
 def gauss_1d(npts):
-    if npts == 2:
+    if npts == 1:
+        pts = [0.0]
+        wts = [2.0]
+
+    elif npts == 2:
         pts = [-0.577350269189625764, 0.577350269189625764]
         wts = [ 1.000000000000000000, 1.000000000000000000]
 
@@ -122,6 +126,12 @@ def gauss_nd(npts, ndim):
 
 
 
+
+
+
+
+
+# ESTAS FUNCIONES NO SE USAN
 
 class Gauss_Legendre(): #primero simetrico
     def __init__(self, npts, ndim):

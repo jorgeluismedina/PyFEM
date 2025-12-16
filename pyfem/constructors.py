@@ -5,9 +5,13 @@ from .elements.truss2d import Truss2D
 from .elements.truss3d import Truss3D
 from .elements.frame2d import Frame2D
 from .elements.frame22d import Frame22D
+from .elements.frame3d import Frame3D
 from .elements.tri3 import Tri3
 from .elements.quad4 import Quad4
 from .elements.quad8 import Quad8
+from .elements.mq8 import MQ8
+from .elements.dkq import DKQ
+from .elements.shell_mq8 import ShellMQ8
 from .elements.hex8 import Hex8
 
 
@@ -28,6 +32,9 @@ def frame_constructor(etype, mater, section, coord, conec, dof):
     elif etype == 'Frame22D':
         return Frame22D(mater, section, coord, conec, dof)
     
+    elif etype == 'Frame3D':
+        return Frame3D(mater, section, coord, conec, dof)
+    
     else:
         raise ValueError(f"Not supported element type: {etype}")
 
@@ -42,6 +49,15 @@ def area_constructor(etype, mater, section, coord, conec, dof):
     
     elif etype == 'Quad8':
         return Quad8(mater, section, coord, conec, dof)
+    
+    elif etype == 'MQ8':
+        return MQ8(mater, section, coord, conec, dof)
+    
+    elif etype == 'DKQ':
+        return DKQ(mater, section, coord, conec, dof)
+    
+    elif etype == 'ShellMQ8':
+        return ShellMQ8(mater, section, coord, conec, dof)
     
     else:
         raise ValueError(f"Not supported element type: {etype}")

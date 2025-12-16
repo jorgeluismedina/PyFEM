@@ -10,7 +10,7 @@ from pyfem.materials.yield_criterion import StressState2D
 
 #Esta clase tiene que variar para problemas axisimetricos ya que B es una matriz de (4,8)
 class Quad8(AreaElement):
-    def __init__(self, mater, section, coord, conec, dof): # O que reciba un Gauss_Legendre o un Node4Shape para evitar instancias repetidas
+    def __init__(self, mater, section, coord, conec, dof):
         super().__init__(mater, section, coord, conec, dof)
         #self.yield_crite = self.mater.yield_crite
         self.init_element()
@@ -33,15 +33,12 @@ class Quad8(AreaElement):
         B[2, 1::2] = cartd[0, :]
         return B, sp.linalg.det(jacob)
     
-    def get_body_load(self):
-        bforc = np.array([0, -self.mater.dense])
-        N_b = bforc @ self.nmatx
-        return np.sum(N_b * self.dvolu[:,None], axis=0)
+    
     
     def get_stiff_mat(self):
         bmatx_T = np.transpose(self.bmatx,(0,2,1)) #Transponer B por cada punto de integracion
-        BT_D_B = bmatx_T @ self.dmatx @ self.bmatx
-        return np.sum(BT_D_B * self.dvolu[:,None,None], axis=0)
+        BT_D_B = bmatx_T @ self.dmatx @ self.bmatx 
+        return np.sum(BT_D_B * self.darea[:,None,None] * self.section.thick, axis=0)
     
 
     def init_element(self):
@@ -49,45 +46,35 @@ class Quad8(AreaElement):
         npoin = points.shape[0]
         #self.stress = np.zeros((npoin,3))
         self.stress = StressState2D()
-        self.yielded = np.zeros(npoin, dtype=bool)
+        #self.yielded = np.zeros(npoin, dtype=bool)
         self.dmatx = np.tile(self.mater.dmatx, (npoin,1,1)) # D = [(3,3),(3,3),(3,3),(3,3)]
         self.bmatx = np.zeros((npoin,3,16)) # B = [(3,16),(3,16),(3,16),(3,16)]
-        self.nmatx = np.zeros((npoin,2,16)) # N = [(2,16),(2,16),(2,16),(2,16)]
+        self.nmatx = np.zeros((npoin,8)) # N = [(2,16),(2,16),(2,16),(2,16)]
         det_J = np.zeros(npoin)
 
         for i, point in enumerate(points):
-            self.nmatx[i] = self.get_shape_mat(*point)
+            self.nmatx[i] = shape_quad8(*point)
             self.bmatx[i], det_J[i] = self.get_strain_mat(*point)
         
         self.area = np.dot(det_J, weights)
-        self.dvolu = self.section.thick * det_J * weights
+        self.darea = det_J * weights
         self.stiff = self.get_stiff_mat()
-        self.bload = self.get_body_load()
+        #self.bload = self.get_body_load()
+        self.loads = np.zeros(16)
+        self.add_selfweight()
 
-    def calc_stress(self, glob_disps):
-        #Estas partes no importa de momento
-        #poins = 1/self.quad_scheme.points
-        #gvals = self.shape.funcs(*poins.T).T #4x4
-        #order = [0,2,3,1]
+    def add_selfweight(self):
+        Nb = -self.mater.dense * self.section.thick
+        Nb_nodal = np.sum(Nb * self.nmatx * self.darea[:,None], axis=0)
+        self.loads[1::2] += Nb_nodal
+        #bforc = np.array([0, -self.mater.dense * self.section.thick])
+        #N_b = bforc @ self.nmatx 
+        #return selfweight#np.sum(N_b * self.darea[:,None], axis=0)
+
+    def calculate_stress(self, glob_disps):
+        #siguen habiendo 4 puntos de integracion
         gauss_stress = self.dmatx @ self.bmatx @ glob_disps #4x3
-        #nodes_stress = gvals[order] @ gauss_stress[order] #4x3
-        return gauss_stress#, nodes_stress
-    
-    '''
-    def update_stiff(self, delta_stress):
-        self.stress += delta_stress
-        modi_stress = self.const_model.all_components(self.stress)
-        prev_yielded = np.copy(self.yielded)
-        
-        for i, stress in enumerate(modi_stress):
-            self.yield_crite.enter_stress(stress)
-            
-            if self.yield_crite.check_yield():
-                if not self.yielded[i]:
-                    avect = self.yield_crite.get_flow_vector()
-                    self.dmatx[i] = self.mater.calculate_Dp(avect)
-                    self.yielded[i] = True
-
-        if not np.array_equal(prev_yielded, self.yielded):
-            self.stiff = self.get_stiff_mat()
-    '''
+        self.stress.update(gauss_stress[:,0], 
+                           gauss_stress[:,1], 
+                           gauss_stress[:,2])
+        #return gauss_stress#, nodes_stress

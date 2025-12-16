@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from pyfem.femclass import Model
 from pyfem.materials.material import Material
 from pyfem.sections import AreaSection
-from pyfem.plotting import print_matrix, plot_2dmodel
+from pyfem.plotting import print_matrix
 from pyfem.solvers import solve_linear_static
 
 # Materiales

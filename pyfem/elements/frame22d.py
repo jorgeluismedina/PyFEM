@@ -11,7 +11,6 @@ class Frame22D(FrameElement):
         self.length = sp.linalg.norm(vector)
         self.dirvec = vector/self.length
         self.init_element()
-        self.force = None
 
     def rmatx(self):
         c, s = self.dirvec
@@ -59,21 +58,30 @@ class Frame22D(FrameElement):
         self.stiff = self.rmatx().T @ self.kmatx() @ self.rmatx()
         self.mass = self.rmatx().T @ self.mmatx() @ self.rmatx()
         self.loads = np.zeros(6)
+        self.forces = np.zeros(6)
 
-    def add_loadss(self, qui, qvi, quj, qvj):
-        fui = -(qui/3 + quj/6) * self.length
-        fvi =  (3/20)*(qvj-qvi)*self.length + qvi*self.length/2
-        mi  =  (qvj-qvi)*self.length**2/30 + qvi*self.length**2/12
+    def add_loadss(self, q1i, q2i, q1j, q2j):
+        # Añadir en coordenadas locales
+        # q1i = intensidad en el nodo i en direccion de la barra
+        # q1j = intensidad en el nodo j en direccion de la barra
+        # q2i = intensidad en el nodo i en direccion perpendicular de la barra
+        # q2j = intensidad en el nodo j en direccion perpendicular de la barra
+        qi_qj = q2i - q2j
 
-        fuj = -(quj/3 + qui/6) * self.length
-        fvj =  (7/20)*(qvj-qvi)*self.length + qvi*self.length/2
-        mj  = -((qvj-qvi)*self.length**2/20 + qvi*self.length**2/12)
+        self.loads[0] =  (q1i/3 + q1j/6) * self.length
+        self.loads[1] = -(3/20 * (qi_qj) - q2i/2) * self.length
+        self.loads[2]  = -(1/30 * (qi_qj) - q2i/12) * self.length**2
 
-        self.loads = self.rmatx() @ np.array([fui, fvi, mi, fuj, fvj, mj])
+        self.loads[3] =  (q1j/3 + q1i/6) * self.length
+        self.loads[4] = -(7/20 * (qi_qj) - q2i/2) * self.length
+        self.loads[5]  =  (1/20 * (qi_qj) - q2i/12) * self.length**2
+
+        self.loads = self.rmatx() @ self.loads
     
     def calculate_forces(self, glob_disps):
         # A Coordenadas locales
-        self.force = self.rmatx() @ self.stiff @ glob_disps
+        self.forces = self.rmatx() @ self.stiff @ glob_disps
+        self.forces = self.forces - self.loads
 
         
 

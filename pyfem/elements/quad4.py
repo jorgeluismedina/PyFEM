@@ -33,16 +33,12 @@ class Quad4(AreaElement):
         B[2, 0::2] = cartd[1, :]
         B[2, 1::2] = cartd[0, :]
         return B, sp.linalg.det(jacob)
-    
-    def get_body_load(self):
-        bforc = np.array([0, -self.mater.dense])
-        N_b = bforc @ self.nmatx
-        return np.sum(N_b * self.dvolu[:,None], axis=0)
+     
     
     def get_stiff_mat(self):
         bmatx_T = np.transpose(self.bmatx,(0,2,1)) #Transponer B por cada punto de integracion
         BT_D_B = bmatx_T @ self.dmatx @ self.bmatx
-        return np.sum(BT_D_B * self.dvolu[:,None,None], axis=0)
+        return np.sum(BT_D_B * self.darea[:,None,None] * self.section.thick, axis=0)
     
 
     def init_element(self):
@@ -50,7 +46,7 @@ class Quad4(AreaElement):
         npoin = points.shape[0]
         #self.stress = np.zeros((npoin,3))
         self.stress = StressState2D()
-        self.yielded = np.zeros(npoin, dtype=bool)
+        #self.yielded = np.zeros(npoin, dtype=bool)
         self.dmatx = np.tile(self.mater.dmatx, (npoin,1,1)) # D = [(3,3),(3,3),(3,3),(3,3)]
         self.bmatx = np.zeros((npoin,3,8)) # B = [(3,8),(3,8),(3,8),(3,8)]
         self.nmatx = np.zeros((npoin,2,8)) # N = [(2,8),(2,8),(2,8),(2,8)]
@@ -61,13 +57,21 @@ class Quad4(AreaElement):
             self.bmatx[i], det_J[i] = self.get_strain_mat(*point)
         
         self.area = np.dot(det_J, weights)
-        self.dvolu = self.section.thick * det_J * weights
+        self.darea = det_J * weights
         self.stiff = self.get_stiff_mat()
-        self.bload = self.get_body_load()
+        #self.bload = self.get_body_load()
         self.loads = np.zeros(8)
+        self.add_selfweight()
+
+    def add_selfweight(self):
+        Nb_nodal = -self.mater.dense * self.section.thick * self.area / 4
+        self.loads[1::2] += Nb_nodal
+        
 
     # normal_load es positivo si es como succion y negativo como presion
     # tangent_load es positivo en sentido antihorario y negativo en sentido horario
+    # el primer lado corresponde a los dos primeros nodos
+    # solo sirve para carga distribuida lineal
     def add_loads(self, normal_distributed=[0,0,0,0], tangent_distributed=[0,0,0,0]):
         side_vectors = np.diff(self.coord, axis=0, append=self.coord[0,None])
         side_lenghts = np.linalg.norm(side_vectors, axis=1)
@@ -75,26 +79,17 @@ class Quad4(AreaElement):
         n_equi = np.array(normal_distributed) * side_lenghts / 2
         t_equi = np.array(tangent_distributed) * side_lenghts / 2
 
-        #print(n_equi)
-        #print(t_equi)
-        #print('\n')
-
-        x_equi = -n_equi*c - t_equi*s #todo menos por que antihorario es positivo
-        y_equi = -n_equi*s + t_equi*c
+        #los cosenos negativos porque en antihorario el x positivo apunta a la izquierda
+        x_equi =  -t_equi*c - n_equi*s 
+        y_equi =   t_equi*s - n_equi*c
          
-        self.loads[0::2] = x_equi + np.roll(x_equi,1)
-        self.loads[1::2] = y_equi + np.roll(y_equi,1)
+        self.loads[0::2] += x_equi + np.roll(x_equi,1)
+        self.loads[1::2] += y_equi + np.roll(y_equi,1)
         #self.loads = side_lenghts
 
+
     def calculate_stress(self, glob_disps):
-        #Estas partes no importa de momento
-        #poins = 1/self.quad_scheme.points
-        #gvals = self.shape.funcs(*poins.T).T #4x4
-        #order = [0,2,3,1]
-        gauss_stress = self.dmatx @ self.bmatx @ glob_disps #4x3
-        #nodes_stress = gvals[order] @ gauss_stress[order] #4x3
-        #self.gstress = gauss_stress#, nodes_stress
-        #self.stress = gauss_stress #cambiar luego
+        gauss_stress = self.dmatx @ self.bmatx @ glob_disps
         self.stress.update(gauss_stress[:,0], 
                            gauss_stress[:,1], 
                            gauss_stress[:,2])

@@ -1,7 +1,7 @@
 
 import numpy as np
-from scipy.linalg import cho_factor, cho_solve
 import scipy as sp
+from scipy.linalg import cho_factor, cho_solve
 from scipy.sparse.linalg import spsolve
 
 
@@ -80,7 +80,38 @@ def vibration_modes(Kff, Mff):
     fk = wk/2/np.pi # [Hz]
 
     return fk, wk, Phi
- 
+
+
+
+def detailed_check_SPD(Kg): # matriz semidefinida positiva
+    eigs = np.linalg.eigvalsh(Kg)
+    
+    print(f"Autovalor mínimo: {np.min(eigs):.2e}")
+    print(f"Autovalor máximo: {np.max(eigs):.2e}")
+    
+    # Contar autovalores según su magnitud
+    zero_eigs = np.sum(np.abs(eigs) < 1e-10)  # Prácticamente cero
+    positive_eigs = np.sum(eigs > 1e-10)      # Claramente positivos
+    negative_eigs = np.sum(eigs < -1e-10)     # Claramente negativos
+    
+    print(f"Autovalores ~0 (modos cuerpo rígido): {zero_eigs}")
+    print(f"Autovalores >0 (modos elásticos): {positive_eigs}") 
+    print(f"Autovalores <0 (problemas!): {negative_eigs}")
+    
+    # Para un elemento shell de 8 nodos libre, esperamos:
+    # - 6 autovalores cero (modos cuerpo rígido)
+    # - 42 autovalores positivos (modos elásticos)
+    # - 0 autovalores negativos
+    
+    expected_rigid_body_modes = 6
+    if zero_eigs == expected_rigid_body_modes and negative_eigs == 0:
+        print("✓ ¡PERFECTO! El elemento tiene el comportamiento esperado")
+    else:
+        print("✗ Comportamiento inesperado - revisar implementación")
+
+
+
+
 #'''
 def finite_differences(model, tspan, F, dt):
     # Matrices del sistema
